@@ -2,16 +2,15 @@
 /vendor/
 /node_modules/
 
-# Build output
-/assets/scripts/dist/
-/assets/styles/dist/
-*.min.js
-*.min.css
+# Build output — webpack bundles are committed so the plugin works without a build step
+# (remove /build/ from this file if you prefer to build on deploy)
+/build/
 
 # Composer
 composer.lock
 
-# npm
+# Bun lockfile is committed (reproducible installs)
+# npm / yarn lockfiles are not used
 package-lock.json
 yarn.lock
 

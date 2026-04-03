@@ -1,0 +1,14 @@
+# Bun configuration for Eightshift Multilang
+# https://bun.sh/docs/runtime/bunfig
+
+[install]
+# Exact versions only — no unexpected minor/patch drift between installs.
+exact = true
+
+# Bun's hardlink-based node_modules is faster and uses less disk space.
+# "hardlink" is the default on macOS/Linux; listed here for clarity.
+linker = "hardlink"
+
+[install.cache]
+# Disable cache in CI environments automatically.
+disable = false
