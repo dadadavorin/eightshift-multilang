@@ -1,0 +1,14 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+    excludePaths:
+        - vendor
+        - node_modules
+    checkMissingIterableValueType: false
+    ignoreErrors:
+        # WordPress globals are not typed.
+        - '#Call to function defined\(\) with .* will always evaluate to true#'

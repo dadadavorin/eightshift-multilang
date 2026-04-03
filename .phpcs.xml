@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<ruleset name="Eightshift Multilang">
+    <description>PHPCS ruleset for Eightshift Multilang plugin.</description>
+
+    <file>src</file>
+    <file>tests</file>
+    <file>eightshift-multilang.php</file>
+    <file>uninstall.php</file>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="WordPress-Extra">
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+        <!-- PSR-4 autoloading uses PascalCase filenames. -->
+        <exclude name="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedNamespaceFound"/>
+    </rule>
+
+    <rule ref="WordPress-Docs"/>
+
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array" value="eightshift-multilang"/>
+        </properties>
+    </rule>
+
+    <rule ref="PHPCompatibility"/>
+
+    <config name="testVersion" value="8.1-"/>
+
+    <!-- Exclude test files from some rules. -->
+    <rule ref="WordPress.WP.AlternativeFunctions">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+</ruleset>
