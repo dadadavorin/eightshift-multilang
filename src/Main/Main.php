@@ -16,6 +16,10 @@ use EightshiftMultilang\Languages\LanguageRepository;
 use EightshiftMultilang\Parser\AttributeExtractor;
 use EightshiftMultilang\Parser\BlockParser;
 use EightshiftMultilang\Parser\MarkupRebuilder;
+use EightshiftMultilang\Router\FrontendQueryFilter;
+use EightshiftMultilang\Router\LanguageDetector;
+use EightshiftMultilang\Router\PermalinkFilter;
+use EightshiftMultilang\Router\UrlRouter;
 use EightshiftMultilang\Translations\SyncDetector;
 use EightshiftMultilang\Translations\TranslationLinker;
 use EightshiftMultilang\Translations\TranslationManager;
@@ -41,6 +45,10 @@ final class Main
 	private BlockParser $blockParser;
 	private MarkupRebuilder $markupRebuilder;
 	private TranslationEngine $translationEngine;
+	private UrlRouter $urlRouter;
+	private LanguageDetector $languageDetector;
+	private PermalinkFilter $permalinkFilter;
+	private FrontendQueryFilter $frontendQueryFilter;
 
 	public function __construct()
 	{
@@ -72,6 +80,12 @@ final class Main
 			translationLinker: $this->translationLinker,
 			usageTracker: new UsageTracker(),
 		);
+
+		// Sprint 3: URL Routing & Permalink System.
+		$this->urlRouter           = new UrlRouter($this->languageRepository);
+		$this->languageDetector    = new LanguageDetector($this->languageRepository);
+		$this->permalinkFilter     = new PermalinkFilter($this->translationRepository, $this->languageRepository);
+		$this->frontendQueryFilter = new FrontendQueryFilter($this->languageRepository);
 	}
 
 	/**
@@ -87,8 +101,17 @@ final class Main
 			dirname(ESML_PLUGIN_BASENAME) . '/languages'
 		);
 
+		// Load template-tag helpers.
+		require_once ESML_PLUGIN_DIR . 'src/Helpers/LanguageHelper.php';
+
 		// Register cache invalidation hooks.
 		$this->cacheInvalidator->register();
+
+		// Sprint 3: routing, detection, permalink filtering, query scoping.
+		$this->urlRouter->register();
+		$this->languageDetector->register();
+		$this->permalinkFilter->register();
+		$this->frontendQueryFilter->register();
 
 		// Run pending DB migrations on each load (safe — versioned, idempotent).
 		global $wpdb;
@@ -188,5 +211,25 @@ final class Main
 	public function getTranslationEngine(): TranslationEngine
 	{
 		return $this->translationEngine;
+	}
+
+	public function getUrlRouter(): UrlRouter
+	{
+		return $this->urlRouter;
+	}
+
+	public function getLanguageDetector(): LanguageDetector
+	{
+		return $this->languageDetector;
+	}
+
+	public function getPermalinkFilter(): PermalinkFilter
+	{
+		return $this->permalinkFilter;
+	}
+
+	public function getFrontendQueryFilter(): FrontendQueryFilter
+	{
+		return $this->frontendQueryFilter;
 	}
 }
