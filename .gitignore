@@ -1,0 +1,37 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build output
+/assets/scripts/dist/
+/assets/styles/dist/
+*.min.js
+*.min.css
+
+# Composer
+composer.lock
+
+# npm
+package-lock.json
+yarn.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# WordPress
+wp-config.php
+
+# Environment
+.env
+.env.local
+
+# Test artifacts
+/tests/coverage/
+.phpunit.result.cache
+
+# PHPStan
+.phpstan/
