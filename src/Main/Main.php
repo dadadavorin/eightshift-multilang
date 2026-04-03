@@ -16,6 +16,10 @@ use EightshiftMultilang\Languages\LanguageRepository;
 use EightshiftMultilang\Parser\AttributeExtractor;
 use EightshiftMultilang\Parser\BlockParser;
 use EightshiftMultilang\Parser\MarkupRebuilder;
+use EightshiftMultilang\Admin\SettingsPage;
+use EightshiftMultilang\Rest\LanguageController;
+use EightshiftMultilang\Rest\SettingsController;
+use EightshiftMultilang\Rest\TranslationController;
 use EightshiftMultilang\Router\FrontendQueryFilter;
 use EightshiftMultilang\Router\LanguageDetector;
 use EightshiftMultilang\Router\PermalinkFilter;
@@ -44,11 +48,17 @@ final class Main
 	private CacheInvalidator $cacheInvalidator;
 	private BlockParser $blockParser;
 	private MarkupRebuilder $markupRebuilder;
+	private ClaudeProvider $claudeProvider;
+	private UsageTracker $usageTracker;
 	private TranslationEngine $translationEngine;
 	private UrlRouter $urlRouter;
 	private LanguageDetector $languageDetector;
 	private PermalinkFilter $permalinkFilter;
 	private FrontendQueryFilter $frontendQueryFilter;
+	private SettingsPage $settingsPage;
+	private LanguageController $languageController;
+	private TranslationController $translationController;
+	private SettingsController $settingsController;
 
 	public function __construct()
 	{
@@ -68,17 +78,19 @@ final class Main
 		$this->cacheInvalidator = new CacheInvalidator($this->cacheManager, $this->translationRepository);
 
 		// Sprint 2: Parser + AI.
-		$this->blockParser      = new BlockParser(new AttributeExtractor());
-		$this->markupRebuilder  = new MarkupRebuilder();
+		$this->blockParser     = new BlockParser(new AttributeExtractor());
+		$this->markupRebuilder = new MarkupRebuilder();
+		$this->claudeProvider  = new ClaudeProvider(new ResponseParser());
+		$this->usageTracker    = new UsageTracker();
 		$this->translationEngine = new TranslationEngine(
 			blockParser: $this->blockParser,
 			markupRebuilder: $this->markupRebuilder,
-			provider: new ClaudeProvider(new ResponseParser()),
+			provider: $this->claudeProvider,
 			promptBuilder: new PromptBuilder(),
 			languageRepository: $this->languageRepository,
 			translationRepository: $this->translationRepository,
 			translationLinker: $this->translationLinker,
-			usageTracker: new UsageTracker(),
+			usageTracker: $this->usageTracker,
 		);
 
 		// Sprint 3: URL Routing & Permalink System.
@@ -86,6 +98,17 @@ final class Main
 		$this->languageDetector    = new LanguageDetector($this->languageRepository);
 		$this->permalinkFilter     = new PermalinkFilter($this->translationRepository, $this->languageRepository);
 		$this->frontendQueryFilter = new FrontendQueryFilter($this->languageRepository);
+
+		// Sprint 4: Admin Settings & REST API.
+		$this->settingsPage          = new SettingsPage($this->languageRepository);
+		$this->languageController    = new LanguageController($this->languageRepository, $this->languageManager);
+		$this->translationController = new TranslationController(
+			$this->translationRepository,
+			$this->translationManager,
+			$this->translationEngine,
+			$this->syncDetector,
+		);
+		$this->settingsController = new SettingsController($this->usageTracker, $this->claudeProvider);
 	}
 
 	/**
@@ -112,6 +135,12 @@ final class Main
 		$this->languageDetector->register();
 		$this->permalinkFilter->register();
 		$this->frontendQueryFilter->register();
+
+		// Sprint 4: admin page + REST controllers.
+		$this->settingsPage->register();
+		$this->languageController->register();
+		$this->translationController->register();
+		$this->settingsController->register();
 
 		// Run pending DB migrations on each load (safe — versioned, idempotent).
 		global $wpdb;
@@ -231,5 +260,25 @@ final class Main
 	public function getFrontendQueryFilter(): FrontendQueryFilter
 	{
 		return $this->frontendQueryFilter;
+	}
+
+	public function getSettingsPage(): SettingsPage
+	{
+		return $this->settingsPage;
+	}
+
+	public function getLanguageController(): LanguageController
+	{
+		return $this->languageController;
+	}
+
+	public function getTranslationController(): TranslationController
+	{
+		return $this->translationController;
+	}
+
+	public function getSettingsController(): SettingsController
+	{
+		return $this->settingsController;
 	}
 }
