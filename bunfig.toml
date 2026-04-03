@@ -5,9 +5,8 @@
 # Exact versions only — no unexpected minor/patch drift between installs.
 exact = true
 
-# Bun's hardlink-based node_modules is faster and uses less disk space.
-# "hardlink" is the default on macOS/Linux; listed here for clarity.
-linker = "hardlink"
+# "hoisted" uses a flat node_modules layout (npm-compatible default).
+linker = "hoisted"
 
 [install.cache]
 # Disable cache in CI environments automatically.
