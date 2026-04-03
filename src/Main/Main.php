@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace EightshiftMultilang\Main;
 
+use EightshiftMultilang\AI\PromptBuilder;
+use EightshiftMultilang\AI\Providers\ClaudeProvider;
+use EightshiftMultilang\AI\ResponseParser;
+use EightshiftMultilang\AI\TranslationEngine;
+use EightshiftMultilang\AI\UsageTracker;
 use EightshiftMultilang\Cache\CacheInvalidator;
 use EightshiftMultilang\Cache\CacheManager;
 use EightshiftMultilang\Languages\LanguageManager;
 use EightshiftMultilang\Languages\LanguageRepository;
+use EightshiftMultilang\Parser\AttributeExtractor;
+use EightshiftMultilang\Parser\BlockParser;
+use EightshiftMultilang\Parser\MarkupRebuilder;
 use EightshiftMultilang\Translations\SyncDetector;
 use EightshiftMultilang\Translations\TranslationLinker;
 use EightshiftMultilang\Translations\TranslationManager;
@@ -30,6 +38,9 @@ final class Main
 	private TranslationLinker $translationLinker;
 	private SyncDetector $syncDetector;
 	private CacheInvalidator $cacheInvalidator;
+	private BlockParser $blockParser;
+	private MarkupRebuilder $markupRebuilder;
+	private TranslationEngine $translationEngine;
 
 	public function __construct()
 	{
@@ -47,6 +58,20 @@ final class Main
 		$this->syncDetector = new SyncDetector($this->translationRepository);
 
 		$this->cacheInvalidator = new CacheInvalidator($this->cacheManager, $this->translationRepository);
+
+		// Sprint 2: Parser + AI.
+		$this->blockParser      = new BlockParser(new AttributeExtractor());
+		$this->markupRebuilder  = new MarkupRebuilder();
+		$this->translationEngine = new TranslationEngine(
+			blockParser: $this->blockParser,
+			markupRebuilder: $this->markupRebuilder,
+			provider: new ClaudeProvider(new ResponseParser()),
+			promptBuilder: new PromptBuilder(),
+			languageRepository: $this->languageRepository,
+			translationRepository: $this->translationRepository,
+			translationLinker: $this->translationLinker,
+			usageTracker: new UsageTracker(),
+		);
 	}
 
 	/**
@@ -148,5 +173,20 @@ final class Main
 	public function getSyncDetector(): SyncDetector
 	{
 		return $this->syncDetector;
+	}
+
+	public function getBlockParser(): BlockParser
+	{
+		return $this->blockParser;
+	}
+
+	public function getMarkupRebuilder(): MarkupRebuilder
+	{
+		return $this->markupRebuilder;
+	}
+
+	public function getTranslationEngine(): TranslationEngine
+	{
+		return $this->translationEngine;
 	}
 }
