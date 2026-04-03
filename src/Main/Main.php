@@ -16,6 +16,7 @@ use EightshiftMultilang\Languages\LanguageRepository;
 use EightshiftMultilang\Parser\AttributeExtractor;
 use EightshiftMultilang\Parser\BlockParser;
 use EightshiftMultilang\Parser\MarkupRebuilder;
+use EightshiftMultilang\Admin\EditorSidebar;
 use EightshiftMultilang\Admin\SettingsPage;
 use EightshiftMultilang\Rest\LanguageController;
 use EightshiftMultilang\Rest\SettingsController;
@@ -56,6 +57,7 @@ final class Main
 	private PermalinkFilter $permalinkFilter;
 	private FrontendQueryFilter $frontendQueryFilter;
 	private SettingsPage $settingsPage;
+	private EditorSidebar $editorSidebar;
 	private LanguageController $languageController;
 	private TranslationController $translationController;
 	private SettingsController $settingsController;
@@ -100,7 +102,8 @@ final class Main
 		$this->frontendQueryFilter = new FrontendQueryFilter($this->languageRepository);
 
 		// Sprint 4: Admin Settings & REST API.
-		$this->settingsPage          = new SettingsPage($this->languageRepository);
+		$this->settingsPage    = new SettingsPage($this->languageRepository);
+		$this->editorSidebar   = new EditorSidebar($this->languageRepository);
 		$this->languageController    = new LanguageController($this->languageRepository, $this->languageManager);
 		$this->translationController = new TranslationController(
 			$this->translationRepository,
@@ -136,8 +139,9 @@ final class Main
 		$this->permalinkFilter->register();
 		$this->frontendQueryFilter->register();
 
-		// Sprint 4: admin page + REST controllers.
+		// Sprint 4 + 5: admin page, editor sidebar, REST controllers.
 		$this->settingsPage->register();
+		$this->editorSidebar->register();
 		$this->languageController->register();
 		$this->translationController->register();
 		$this->settingsController->register();
@@ -265,6 +269,11 @@ final class Main
 	public function getSettingsPage(): SettingsPage
 	{
 		return $this->settingsPage;
+	}
+
+	public function getEditorSidebar(): EditorSidebar
+	{
+		return $this->editorSidebar;
 	}
 
 	public function getLanguageController(): LanguageController
