@@ -40,3 +40,27 @@ if (! function_exists('esml_is_language')) {
 		return esml_get_current_language() === $code;
 	}
 }
+
+if (! function_exists('esml_language_switcher')) {
+	/**
+	 * Output (echo) the language switcher HTML.
+	 *
+	 * Uses the registered LanguageSwitcherBlock renderer via the
+	 * eightshift-multilang/language-switcher shortcode so the output is
+	 * identical whether called from a template tag, shortcode, or block.
+	 *
+	 * @param bool $showNativeNames Display native language name instead of English name.
+	 * @param bool $showFlags       Prepend a flag span to each item.
+	 */
+	function esml_language_switcher(bool $showNativeNames = false, bool $showFlags = false): void
+	{
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo do_shortcode(
+			sprintf(
+				'[esml_language_switcher show_native_names="%d" show_flags="%d"]',
+				(int) $showNativeNames,
+				(int) $showFlags,
+			)
+		);
+	}
+}

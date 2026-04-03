@@ -12,6 +12,8 @@ import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar } from '@wordpress/editor';
 import { useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
+import { useBlockProps } from '@wordpress/block-editor';
+import { registerBlockType } from '@wordpress/blocks';
 import { __ } from '@wordpress/i18n';
 import TranslationSidebar from './components/TranslationSidebar';
 
@@ -46,3 +48,40 @@ function TranslationPlugin() {
 }
 
 registerPlugin( 'esml-translations', { render: TranslationPlugin } );
+
+// ---------------------------------------------------------------------------
+// Language Switcher block — editor component.
+// The PHP render_callback in LanguageSwitcherBlock.php handles the frontend.
+// ---------------------------------------------------------------------------
+
+registerBlockType( 'eightshift-multilang/language-switcher', {
+	title:    __( 'Language Switcher', 'eightshift-multilang' ),
+	category: 'widgets',
+	icon:     'translation',
+	attributes: {
+		showNativeNames: { type: 'boolean', default: false },
+		showFlags:       { type: 'boolean', default: false },
+	},
+
+	edit( { attributes, setAttributes } ) {
+		const blockProps = useBlockProps( { className: 'esml-switcher-editor-preview' } );
+
+		return (
+			<div { ...blockProps }>
+				<div className="esml-switcher-editor-preview__inner">
+					<span className="dashicons dashicons-translation" />
+					<p>
+						{ __( 'Language Switcher', 'eightshift-multilang' ) }
+						<br />
+						<small>
+							{ __( 'Rendered on the frontend.', 'eightshift-multilang' ) }
+						</small>
+					</p>
+				</div>
+			</div>
+		);
+	},
+
+	// Server-side rendered — save returns null so WordPress calls render_callback.
+	save: () => null,
+} );

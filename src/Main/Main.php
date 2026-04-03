@@ -16,9 +16,14 @@ use EightshiftMultilang\Languages\LanguageRepository;
 use EightshiftMultilang\Parser\AttributeExtractor;
 use EightshiftMultilang\Parser\BlockParser;
 use EightshiftMultilang\Parser\MarkupRebuilder;
+use EightshiftMultilang\Admin\AdminNotices;
 use EightshiftMultilang\Admin\EditorSidebar;
+use EightshiftMultilang\Admin\PostListManager;
 use EightshiftMultilang\Admin\SettingsPage;
+use EightshiftMultilang\Block\LanguageSwitcherBlock;
 use EightshiftMultilang\Rest\LanguageController;
+use EightshiftMultilang\Seo\CanonicalFilter;
+use EightshiftMultilang\Seo\HreflangManager;
 use EightshiftMultilang\Rest\SettingsController;
 use EightshiftMultilang\Rest\TranslationController;
 use EightshiftMultilang\Router\FrontendQueryFilter;
@@ -61,6 +66,11 @@ final class Main
 	private LanguageController $languageController;
 	private TranslationController $translationController;
 	private SettingsController $settingsController;
+	private HreflangManager $hreflangManager;
+	private CanonicalFilter $canonicalFilter;
+	private LanguageSwitcherBlock $languageSwitcherBlock;
+	private PostListManager $postListManager;
+	private AdminNotices $adminNotices;
 
 	public function __construct()
 	{
@@ -112,6 +122,13 @@ final class Main
 			$this->syncDetector,
 		);
 		$this->settingsController = new SettingsController($this->usageTracker, $this->claudeProvider);
+
+		// Sprint 6: SEO, Language Switcher, Post List, Admin Notices.
+		$this->hreflangManager      = new HreflangManager($this->translationRepository, $this->languageRepository, $this->cacheManager);
+		$this->canonicalFilter      = new CanonicalFilter($this->translationRepository, $this->languageRepository);
+		$this->languageSwitcherBlock = new LanguageSwitcherBlock($this->languageRepository, $this->translationRepository);
+		$this->postListManager      = new PostListManager($this->translationRepository, $this->languageRepository, $this->syncDetector);
+		$this->adminNotices         = new AdminNotices($this->languageRepository);
 	}
 
 	/**
@@ -145,6 +162,13 @@ final class Main
 		$this->languageController->register();
 		$this->translationController->register();
 		$this->settingsController->register();
+
+		// Sprint 6: SEO, language switcher block, post-list UI, admin notices.
+		$this->hreflangManager->register();
+		$this->canonicalFilter->register();
+		$this->languageSwitcherBlock->register();
+		$this->postListManager->register();
+		$this->adminNotices->register();
 
 		// Run pending DB migrations on each load (safe — versioned, idempotent).
 		global $wpdb;
@@ -289,5 +313,30 @@ final class Main
 	public function getSettingsController(): SettingsController
 	{
 		return $this->settingsController;
+	}
+
+	public function getHreflangManager(): HreflangManager
+	{
+		return $this->hreflangManager;
+	}
+
+	public function getCanonicalFilter(): CanonicalFilter
+	{
+		return $this->canonicalFilter;
+	}
+
+	public function getLanguageSwitcherBlock(): LanguageSwitcherBlock
+	{
+		return $this->languageSwitcherBlock;
+	}
+
+	public function getPostListManager(): PostListManager
+	{
+		return $this->postListManager;
+	}
+
+	public function getAdminNotices(): AdminNotices
+	{
+		return $this->adminNotices;
 	}
 }
