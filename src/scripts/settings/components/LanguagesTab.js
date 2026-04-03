@@ -24,7 +24,7 @@ export default function LanguagesTab() {
 	const [ notice, setNotice ]       = useState( null );
 
 	const load = useCallback( () => {
-		apiFetch( { path: '/languages' } )
+		apiFetch( { path: '/eightshift-multilang/v1/languages' } )
 			.then( ( res ) => setLanguages( res.data ) )
 			.catch( () =>
 				setNotice( { type: 'error', message: __( 'Failed to load languages.', 'eightshift-multilang' ) } )
@@ -39,7 +39,7 @@ export default function LanguagesTab() {
 		setAdding( true );
 		setNotice( null );
 		try {
-			await apiFetch( { path: '/languages', method: 'POST', data: form } );
+			await apiFetch( { path: '/eightshift-multilang/v1/languages', method: 'POST', data: form } );
 			setForm( EMPTY_FORM );
 			load();
 		} catch ( err ) {
@@ -55,7 +55,7 @@ export default function LanguagesTab() {
 	const handleSetDefault = async ( code ) => {
 		setNotice( null );
 		try {
-			await apiFetch( { path: `/languages/${ code }/default`, method: 'PUT' } );
+			await apiFetch( { path: `/eightshift-multilang/v1/languages/${ code }/default`, method: 'PUT' } );
 			load();
 		} catch ( err ) {
 			setNotice( { type: 'error', message: err?.message ?? __( 'Failed to set default.', 'eightshift-multilang' ) } );
@@ -66,7 +66,7 @@ export default function LanguagesTab() {
 		setNotice( null );
 		try {
 			await apiFetch( {
-				path:   `/languages/${ code }/status`,
+				path:   `/eightshift-multilang/v1/languages/${ code }/status`,
 				method: 'PUT',
 				data:   { active: ! currentlyActive },
 			} );
@@ -82,7 +82,7 @@ export default function LanguagesTab() {
 		}
 		setNotice( null );
 		try {
-			await apiFetch( { path: `/languages/${ code }`, method: 'DELETE' } );
+			await apiFetch( { path: `/eightshift-multilang/v1/languages/${ code }`, method: 'DELETE' } );
 			load();
 		} catch ( err ) {
 			setNotice( { type: 'error', message: err?.message ?? __( 'Failed to remove language.', 'eightshift-multilang' ) } );

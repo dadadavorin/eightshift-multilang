@@ -13,11 +13,6 @@ apiFetch.use(
 	apiFetch.createNonceMiddleware( window.esmSettings?.nonce ?? '' )
 );
 
-// Point apiFetch at our plugin REST root.
-apiFetch.use(
-	apiFetch.createRootURLMiddleware( window.esmSettings?.restUrl ?? '' )
-);
-
 const root = document.getElementById( 'esml-settings-root' );
 
 if ( root ) {

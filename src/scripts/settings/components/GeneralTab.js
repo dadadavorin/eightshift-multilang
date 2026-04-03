@@ -18,7 +18,7 @@ export default function GeneralTab() {
 	const [ notice, setNotice ]     = useState( null ); // { type: 'success'|'error', message }
 
 	useEffect( () => {
-		apiFetch( { path: '/settings' } )
+		apiFetch( { path: '/eightshift-multilang/v1/settings' } )
 			.then( ( res ) => setSettings( res.data ) )
 			.catch( () =>
 				setNotice( {
@@ -33,7 +33,7 @@ export default function GeneralTab() {
 		setNotice( null );
 		try {
 			await apiFetch( {
-				path:   '/settings',
+				path:   '/eightshift-multilang/v1/settings',
 				method: 'POST',
 				data:   {
 					url_mode:                settings.url_mode,

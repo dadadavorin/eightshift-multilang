@@ -35,7 +35,7 @@ export default function TranslationSidebar() {
 		if ( ! postId ) { return; }
 		setGroup( null );
 
-		apiFetch( { path: `/translations/${ postId }` } )
+		apiFetch( { path: `/eightshift-multilang/v1/translations/${ postId }` } )
 			.then( async ( res ) => {
 				setGroup( res.data );
 
@@ -47,7 +47,7 @@ export default function TranslationSidebar() {
 					links
 						.filter( ( l ) => ! l.is_source )
 						.map( ( l ) =>
-							apiFetch( { path: `/translations/${ l.post_id }/sync-status` } )
+							apiFetch( { path: `/eightshift-multilang/v1/translations/${ l.post_id }/sync-status` } )
 								.then( ( sr ) => { syncs[ l.post_id ] = sr.data.out_of_sync; } )
 								.catch( () => {} )
 						),

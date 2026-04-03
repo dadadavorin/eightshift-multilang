@@ -31,7 +31,7 @@ export default function TranslateModal( { postId, existingLanguageCodes, onClose
 		setErrorMessage( '' );
 		try {
 			const res = await apiFetch( {
-				path:   `/translations/${ postId }/translate`,
+				path:   `/eightshift-multilang/v1/translations/${ postId }/translate`,
 				method: 'POST',
 				data:   { target_language: targetLanguage },
 			} );

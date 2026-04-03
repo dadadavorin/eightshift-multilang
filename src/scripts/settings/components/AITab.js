@@ -32,8 +32,8 @@ export default function AITab() {
 
 	useEffect( () => {
 		Promise.all( [
-			apiFetch( { path: '/settings' } ),
-			apiFetch( { path: '/usage' } ),
+			apiFetch( { path: '/eightshift-multilang/v1/settings' } ),
+			apiFetch( { path: '/eightshift-multilang/v1/usage' } ),
 		] )
 			.then( ( [ settingsRes, usageRes ] ) => {
 				setSettings( settingsRes.data );
@@ -57,11 +57,11 @@ export default function AITab() {
 			if ( apiKey !== '' ) {
 				data.api_key = apiKey;
 			}
-			await apiFetch( { path: '/settings', method: 'POST', data } );
+			await apiFetch( { path: '/eightshift-multilang/v1/settings', method: 'POST', data } );
 			setApiKey( '' ); // Clear field — it's stored encrypted.
 			setNotice( { type: 'success', message: __( 'Settings saved.', 'eightshift-multilang' ) } );
 			// Refresh api_key_set flag.
-			const refreshed = await apiFetch( { path: '/settings' } );
+			const refreshed = await apiFetch( { path: '/eightshift-multilang/v1/settings' } );
 			setSettings( refreshed.data );
 		} catch ( err ) {
 			setNotice( {
@@ -77,7 +77,7 @@ export default function AITab() {
 		setValidating( true );
 		setNotice( null );
 		try {
-			const res = await apiFetch( { path: '/settings/validate-connection', method: 'POST' } );
+			const res = await apiFetch( { path: '/eightshift-multilang/v1/settings/validate-connection', method: 'POST' } );
 			setNotice( {
 				type:    'success',
 				message: __( 'Connection successful. Model: ', 'eightshift-multilang' ) + res.data.model,

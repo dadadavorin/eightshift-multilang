@@ -21,7 +21,6 @@ const { nonce, restUrl, translatableTypes = [] } = window.esmEditor ?? {};
 
 // Configure apiFetch for this bundle.
 apiFetch.use( apiFetch.createNonceMiddleware( nonce ?? '' ) );
-apiFetch.use( apiFetch.createRootURLMiddleware( restUrl ?? '' ) );
 
 /**
  * Wrapper that hides the sidebar for non-translatable post types.
