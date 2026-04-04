@@ -3,6 +3,10 @@
  *
  * Lists all languages with controls to activate/deactivate, set as default,
  * remove, and reorder. Also provides an "Add language" form.
+ *
+ * Active/inactive toggles are batched: clicking a checkbox only updates local
+ * state, and the "Save changes" button appears once there are pending changes.
+ * Set Default and Remove take effect immediately (they are explicit, named actions).
  */
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import {
@@ -18,14 +22,22 @@ import { __ } from '@wordpress/i18n';
 const EMPTY_FORM = { code: '', locale: '', name: '', native_name: '', flag_code: '' };
 
 export default function LanguagesTab() {
-	const [ languages, setLanguages ] = useState( null );
-	const [ form, setForm ]           = useState( EMPTY_FORM );
-	const [ adding, setAdding ]       = useState( false );
-	const [ notice, setNotice ]       = useState( null );
+	const [ languages, setLanguages ]           = useState( null );
+	const [ pendingChanges, setPendingChanges ] = useState( {} ); // { [code]: boolean }
+	const [ form, setForm ]                     = useState( EMPTY_FORM );
+	const [ saving, setSaving ]                 = useState( false );
+	const [ adding, setAdding ]                 = useState( false );
+	const [ notice, setNotice ]                 = useState( null );
+
+	const hasPendingChanges = Object.keys( pendingChanges ).length > 0;
 
 	const load = useCallback( () => {
 		apiFetch( { path: '/eightshift-multilang/v1/languages' } )
-			.then( ( res ) => setLanguages( res.data ) )
+			.then( ( res ) => {
+				setLanguages( res.data );
+				// Clear pending changes when a fresh server state is loaded.
+				setPendingChanges( {} );
+			} )
 			.catch( () =>
 				setNotice( { type: 'error', message: __( 'Failed to load languages.', 'eightshift-multilang' ) } )
 			);
@@ -33,6 +45,51 @@ export default function LanguagesTab() {
 
 	useEffect( () => { load(); }, [ load ] );
 
+	// ---------------------------------------------------------------------------
+	// Active / inactive — local-only until Save is clicked.
+	// ---------------------------------------------------------------------------
+
+	const handleToggleActive = ( code, currentlyActive ) => {
+		const newValue = ! currentlyActive;
+
+		// Optimistically update the display so the checkbox reflects the click immediately.
+		setLanguages( ( prev ) =>
+			prev.map( ( l ) => l.code === code ? { ...l, is_active: newValue } : l )
+		);
+
+		// Record the desired value for this language. If the user toggles back
+		// and forth we always store the latest intent; saving is idempotent.
+		setPendingChanges( ( prev ) => ( { ...prev, [ code ]: newValue } ) );
+	};
+
+	const handleSaveChanges = async () => {
+		setSaving( true );
+		setNotice( null );
+		try {
+			const entries = Object.entries( pendingChanges );
+
+			for ( const [ code, active ] of entries ) {
+				await apiFetch( {
+					path:   `/eightshift-multilang/v1/languages/${ code }/status`,
+					method: 'PUT',
+					data:   { active },
+				} );
+			}
+
+			setNotice( { type: 'success', message: __( 'Settings saved.', 'eightshift-multilang' ) } );
+			load(); // Reload from server; clears pendingChanges.
+		} catch ( err ) {
+			setNotice( {
+				type:    'error',
+				message: err?.message ?? __( 'Failed to save settings.', 'eightshift-multilang' ),
+			} );
+		} finally {
+			setSaving( false );
+		}
+	};
+
+	// ---------------------------------------------------------------------------
+	// Immediate actions (Set Default, Remove, Add).
 	// ---------------------------------------------------------------------------
 
 	const handleAdd = async () => {
@@ -59,20 +116,6 @@ export default function LanguagesTab() {
 			load();
 		} catch ( err ) {
 			setNotice( { type: 'error', message: err?.message ?? __( 'Failed to set default.', 'eightshift-multilang' ) } );
-		}
-	};
-
-	const handleToggleActive = async ( code, currentlyActive ) => {
-		setNotice( null );
-		try {
-			await apiFetch( {
-				path:   `/eightshift-multilang/v1/languages/${ code }/status`,
-				method: 'PUT',
-				data:   { active: ! currentlyActive },
-			} );
-			load();
-		} catch ( err ) {
-			setNotice( { type: 'error', message: err?.message ?? __( 'Failed to update status.', 'eightshift-multilang' ) } );
 		}
 	};
 
@@ -122,7 +165,13 @@ export default function LanguagesTab() {
 					</thead>
 					<tbody>
 						{ languages.map( ( lang ) => (
-							<tr key={ lang.code } className={ lang.is_default ? 'esml-lang--default' : '' }>
+							<tr
+								key={ lang.code }
+								className={
+									( lang.is_default ? 'esml-lang--default' : '' ) +
+									( lang.code in pendingChanges ? ' esml-lang--pending' : '' )
+								}
+							>
 								<td><code>{ lang.code }</code></td>
 								<td>{ lang.name }</td>
 								<td>{ lang.native_name }</td>
@@ -163,6 +212,23 @@ export default function LanguagesTab() {
 					</tbody>
 				</table>
 			) }
+
+			{ /* Save button — shown whenever there are unsaved active/inactive changes. */ }
+			<div className="esml-settings-tab__footer">
+				<Button
+					variant="primary"
+					onClick={ handleSaveChanges }
+					isBusy={ saving }
+					disabled={ saving || ! hasPendingChanges }
+				>
+					{ __( 'Save settings', 'eightshift-multilang' ) }
+				</Button>
+				{ hasPendingChanges && (
+					<span className="esml-settings-tab__unsaved-hint">
+						{ __( 'You have unsaved changes.', 'eightshift-multilang' ) }
+					</span>
+				) }
+			</div>
 
 			{ /* Add language form */ }
 			<details className="esml-add-language">

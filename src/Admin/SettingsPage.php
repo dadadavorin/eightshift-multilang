@@ -15,7 +15,7 @@ use EightshiftMultilang\Languages\LanguageRepository;
  * settings interaction goes through the REST API.
  *
  * Admin page slug: eightshift-multilang
- * Menu position: under Settings
+ * Menu position: top-level (between Comments and Appearance)
  */
 final class SettingsPage
 {
@@ -24,6 +24,12 @@ final class SettingsPage
 
 	/** Option page slug — matches the value used in PluginActivation redirect. */
 	public const PAGE_SLUG = 'eightshift-multilang';
+
+	/**
+	 * WordPress admin screen ID for this top-level page.
+	 * Hook suffix for add_menu_page() is 'toplevel_page_{slug}'.
+	 */
+	public const SCREEN_ID = 'toplevel_page_eightshift-multilang';
 
 	public function __construct(
 		private readonly LanguageRepository $languageRepository,
@@ -37,16 +43,21 @@ final class SettingsPage
 	}
 
 	/**
-	 * Register the Settings sub-menu page.
+	 * Register the top-level Multilang menu page.
+	 *
+	 * Positioned at 30 — after Comments (25) and before Appearance (60),
+	 * reflecting that it's a core content-management tool when active.
 	 */
 	public function registerMenu(): void
 	{
-		add_options_page(
+		add_menu_page(
 			__('Eightshift Multilang', 'eightshift-multilang'),
 			__('Multilang', 'eightshift-multilang'),
 			'manage_options',
 			self::PAGE_SLUG,
 			[$this, 'render'],
+			'dashicons-translation',
+			30,
 		);
 	}
 
@@ -61,7 +72,7 @@ final class SettingsPage
 	 */
 	public function enqueueAssets(string $hookSuffix): void
 	{
-		if ($hookSuffix !== 'settings_page_' . self::PAGE_SLUG) {
+		if ($hookSuffix !== self::SCREEN_ID) {
 			return;
 		}
 

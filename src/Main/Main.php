@@ -202,7 +202,7 @@ final class Main
 
 		delete_option('esml_activation_redirect');
 
-		wp_safe_redirect(admin_url('options-general.php?page=eightshift-multilang'));
+		wp_safe_redirect(admin_url('admin.php?page=eightshift-multilang'));
 		exit;
 	}
 

@@ -64,7 +64,7 @@ final class AdminNotices
 	 */
 	private function maybeNoticeNoLanguages(\WP_Screen $screen): void
 	{
-		if ($screen->id !== 'settings_page_' . SettingsPage::PAGE_SLUG) {
+		if ($screen->id !== SettingsPage::SCREEN_ID) {
 			return;
 		}
 
@@ -99,7 +99,7 @@ final class AdminNotices
 			return;
 		}
 
-		$settingsUrl = admin_url('options-general.php?page=' . SettingsPage::PAGE_SLUG . '#ai');
+		$settingsUrl = admin_url('admin.php?page=' . SettingsPage::PAGE_SLUG . '#ai');
 
 		printf(
 			'<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
@@ -155,7 +155,7 @@ final class AdminNotices
 	 */
 	private function relevantScreenIds(): array
 	{
-		$ids = ['settings_page_' . SettingsPage::PAGE_SLUG];
+		$ids = [SettingsPage::SCREEN_ID];
 
 		$rawTypes = get_option('esml_translatable_post_types', '["post","page"]');
 		$types    = json_decode((string) $rawTypes, true);
