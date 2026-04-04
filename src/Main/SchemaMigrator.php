@@ -20,6 +20,7 @@ final class SchemaMigrator
 	 */
 	private const MIGRATIONS = [
 		'1.0.0' => 'migration100CreateTables',
+		'1.0.1' => 'migration101ResetSeededLanguages',
 	];
 
 	public function __construct(
@@ -97,7 +98,7 @@ final class SchemaMigrator
             native_name VARCHAR(100) NOT NULL,
             flag_code VARCHAR(10) NOT NULL,
             is_default TINYINT(1) NOT NULL DEFAULT 0,
-            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            is_active TINYINT(1) NOT NULL DEFAULT 0,
             sort_order INT NOT NULL DEFAULT 0,
             date_format VARCHAR(50) DEFAULT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -105,5 +106,28 @@ final class SchemaMigrator
             UNIQUE KEY uk_code (code),
             UNIQUE KEY uk_locale (locale)
         ) {$charset};");
+	}
+
+	/**
+	 * 1.0.1 — Reset seeded languages to inactive.
+	 *
+	 * The 1.0.0 seeder incorrectly set all languages to is_active = 1.
+	 * This migration resets them to inactive on fresh installs (no translations yet).
+	 * Existing installs with translations are untouched.
+	 */
+	private function migration101ResetSeededLanguages(): void
+	{
+		$languagesTable    = $this->db->prefix . 'es_multilang_languages';
+		$translationsTable = $this->db->prefix . 'es_multilang_translations';
+
+		// Guard: if translations already exist this is not a fresh install — skip.
+		$hasTranslations = (int) $this->db->get_var("SELECT COUNT(*) FROM {$translationsTable}");
+
+		if ($hasTranslations > 0) {
+			return;
+		}
+
+		// Reset all non-default languages to inactive.
+		$this->db->query("UPDATE {$languagesTable} SET is_active = 0 WHERE is_default = 0");
 	}
 }

@@ -126,7 +126,7 @@ final class LanguageSeeder
 					'native_name' => $language['native_name'],
 					'flag_code'   => $language['flag_code'],
 					'is_default'  => 0,
-					'is_active'   => 1,
+					'is_active'   => 0,
 					'sort_order'  => $index,
 					'date_format' => null,
 				],

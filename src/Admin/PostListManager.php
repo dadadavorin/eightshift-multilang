@@ -18,16 +18,23 @@ use EightshiftMultilang\Translations\TranslationRepository;
  *    code / "Not translated"). The dropdown emits ?esml_language_filter={code}.
  *  - Applies a JOIN + WHERE to the main admin query when the filter is active,
  *    scoping the list to the selected language (or to unlinked posts).
+ *  - Falls back to the admin bar language context (AdminLanguageSwitcher) when
+ *    no explicit filter is set, so the list automatically shows the language the
+ *    user picked in the admin bar.
  */
 final class PostListManager
 {
 	/** The active filter value for the current request. Null = no filtering. */
 	private ?string $activeFilter = null;
 
+	/** Whether the active filter targets the default language (requires LEFT JOIN). */
+	private bool $isDefaultFilter = false;
+
 	public function __construct(
 		private readonly TranslationRepository $translationRepository,
 		private readonly LanguageRepository $languageRepository,
 		private readonly SyncDetector $syncDetector,
+		private readonly AdminLanguageSwitcher $adminLanguageSwitcher,
 	) {
 	}
 
@@ -170,6 +177,11 @@ final class PostListManager
 
 	/**
 	 * Detect the active language filter and attach JOIN + WHERE hooks.
+	 *
+	 * Priority order:
+	 *  1. Explicit ?esml_language_filter param (dropdown selection, including "All").
+	 *  2. Admin bar language context stored in user meta (AdminLanguageSwitcher).
+	 *
 	 * Called on pre_get_posts.
 	 */
 	public function applyLanguageFilter(\WP_Query $query): void
@@ -185,14 +197,37 @@ final class PostListManager
 			return;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$filter = sanitize_key($_GET['esml_language_filter'] ?? '');
+		$defaultCode = $this->languageRepository->getDefaultCode() ?? '';
 
-		if ($filter === '') {
+		// If the filter dropdown was submitted, honour it (even if value is empty
+		// = "All languages"), and do not apply the admin language fallback.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if (array_key_exists('esml_language_filter', $_GET)) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$filter = sanitize_key($_GET['esml_language_filter']);
+
+			if ($filter === '') {
+				return; // "All languages" explicitly selected — show everything.
+			}
+
+			$this->activeFilter    = $filter;
+			$this->isDefaultFilter = ($filter === $defaultCode);
+
+			add_filter('posts_join',  [$this, 'postsJoinForFilter'],  10, 2);
+			add_filter('posts_where', [$this, 'postsWhereForFilter'], 10, 2);
+
 			return;
 		}
 
-		$this->activeFilter = $filter;
+		// No explicit filter — fall back to admin bar language context.
+		$adminLang = $this->adminLanguageSwitcher->getCurrentAdminLanguage();
+
+		if ($adminLang === '') {
+			return;
+		}
+
+		$this->activeFilter    = $adminLang;
+		$this->isDefaultFilter = ($adminLang === $defaultCode);
 
 		add_filter('posts_join',  [$this, 'postsJoinForFilter'],  10, 2);
 		add_filter('posts_where', [$this, 'postsWhereForFilter'], 10, 2);
@@ -200,7 +235,10 @@ final class PostListManager
 
 	/**
 	 * Add a JOIN to the translations table.
-	 * LEFT JOIN for "unlinked" filter; INNER JOIN for specific languages.
+	 *
+	 * - "unlinked"        → LEFT JOIN (posts with no translation record)
+	 * - default language  → LEFT JOIN (posts in default lang OR unlinked)
+	 * - other language    → INNER JOIN (posts explicitly in that language)
 	 */
 	public function postsJoinForFilter(string $join, \WP_Query $query): string
 	{
@@ -215,7 +253,7 @@ final class PostListManager
 
 		$table = $wpdb->prefix . 'es_multilang_translations';
 
-		if ($this->activeFilter === 'unlinked') {
+		if ($this->activeFilter === 'unlinked' || $this->isDefaultFilter) {
 			$join .= " LEFT JOIN {$table} esml_admin_t ON esml_admin_t.post_id = {$wpdb->posts}.ID ";
 		} else {
 			$join .= " INNER JOIN {$table} esml_admin_t ON esml_admin_t.post_id = {$wpdb->posts}.ID ";
@@ -226,6 +264,9 @@ final class PostListManager
 
 	/**
 	 * Add a WHERE clause scoping the query to the selected language.
+	 *
+	 * Default language uses a LEFT JOIN result, so posts with no translation
+	 * record (NULL) are included alongside explicitly-linked default posts.
 	 */
 	public function postsWhereForFilter(string $where, \WP_Query $query): string
 	{
@@ -239,11 +280,18 @@ final class PostListManager
 
 		if ($this->activeFilter === 'unlinked') {
 			$where .= ' AND esml_admin_t.post_id IS NULL ';
+		} elseif ($this->isDefaultFilter) {
+			// Include posts in the default language OR with no translation record.
+			$where .= $wpdb->prepare(
+				' AND (esml_admin_t.language_code = %s OR esml_admin_t.language_code IS NULL) ',
+				$this->activeFilter,
+			);
 		} else {
 			$where .= $wpdb->prepare(' AND esml_admin_t.language_code = %s ', $this->activeFilter);
 		}
 
-		$this->activeFilter = null;
+		$this->activeFilter    = null;
+		$this->isDefaultFilter = false;
 
 		return $where;
 	}

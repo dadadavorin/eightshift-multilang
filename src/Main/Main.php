@@ -16,6 +16,7 @@ use EightshiftMultilang\Languages\LanguageRepository;
 use EightshiftMultilang\Parser\AttributeExtractor;
 use EightshiftMultilang\Parser\BlockParser;
 use EightshiftMultilang\Parser\MarkupRebuilder;
+use EightshiftMultilang\Admin\AdminLanguageSwitcher;
 use EightshiftMultilang\Admin\AdminNotices;
 use EightshiftMultilang\Admin\EditorSidebar;
 use EightshiftMultilang\Admin\PostListManager;
@@ -71,6 +72,7 @@ final class Main
 	private LanguageSwitcherBlock $languageSwitcherBlock;
 	private PostListManager $postListManager;
 	private AdminNotices $adminNotices;
+	private AdminLanguageSwitcher $adminLanguageSwitcher;
 
 	public function __construct()
 	{
@@ -124,11 +126,12 @@ final class Main
 		$this->settingsController = new SettingsController($this->usageTracker, $this->claudeProvider);
 
 		// Sprint 6: SEO, Language Switcher, Post List, Admin Notices.
-		$this->hreflangManager      = new HreflangManager($this->translationRepository, $this->languageRepository, $this->cacheManager);
-		$this->canonicalFilter      = new CanonicalFilter($this->translationRepository, $this->languageRepository);
+		$this->hreflangManager       = new HreflangManager($this->translationRepository, $this->languageRepository, $this->cacheManager);
+		$this->canonicalFilter       = new CanonicalFilter($this->translationRepository, $this->languageRepository);
 		$this->languageSwitcherBlock = new LanguageSwitcherBlock($this->languageRepository, $this->translationRepository);
-		$this->postListManager      = new PostListManager($this->translationRepository, $this->languageRepository, $this->syncDetector);
-		$this->adminNotices         = new AdminNotices($this->languageRepository);
+		$this->adminLanguageSwitcher = new AdminLanguageSwitcher($this->languageRepository);
+		$this->postListManager       = new PostListManager($this->translationRepository, $this->languageRepository, $this->syncDetector, $this->adminLanguageSwitcher);
+		$this->adminNotices          = new AdminNotices($this->languageRepository);
 	}
 
 	/**
@@ -163,10 +166,11 @@ final class Main
 		$this->translationController->register();
 		$this->settingsController->register();
 
-		// Sprint 6: SEO, language switcher block, post-list UI, admin notices.
+		// Sprint 6: SEO, language switcher block, post-list UI, admin notices, admin bar.
 		$this->hreflangManager->register();
 		$this->canonicalFilter->register();
 		$this->languageSwitcherBlock->register();
+		$this->adminLanguageSwitcher->register();
 		$this->postListManager->register();
 		$this->adminNotices->register();
 
@@ -338,5 +342,10 @@ final class Main
 	public function getAdminNotices(): AdminNotices
 	{
 		return $this->adminNotices;
+	}
+
+	public function getAdminLanguageSwitcher(): AdminLanguageSwitcher
+	{
+		return $this->adminLanguageSwitcher;
 	}
 }
