@@ -19,7 +19,7 @@ use EightshiftMultilang\Helpers\EncryptionHelper;
 final class ClaudeProvider implements ProviderInterface
 {
 	private const API_URL         = 'https://api.anthropic.com/v1/messages';
-	private const MODEL           = 'claude-sonnet-4-20250514';
+	private const DEFAULT_MODEL   = 'claude-sonnet-4-20250514';
 	private const MAX_TOKENS      = 8192;
 	private const TIMEOUT_SECONDS = 60;
 	private const API_VERSION     = '2023-06-01';
@@ -41,7 +41,7 @@ final class ClaudeProvider implements ProviderInterface
 		$apiKey = $this->getDecryptedApiKey();
 
 		$body = [
-			'model'      => self::MODEL,
+			'model'      => $this->getModel(),
 			'max_tokens' => self::MAX_TOKENS,
 			'system'     => $systemPrompt,
 			'messages'   => [
@@ -127,6 +127,8 @@ final class ClaudeProvider implements ProviderInterface
 			return ProviderStatus::error(__('API key is not configured or cannot be decrypted.', 'eightshift-multilang'));
 		}
 
+		$model = $this->getModel();
+
 		// Send a minimal request to confirm the key is valid.
 		$response = wp_remote_post(self::API_URL, [
 			'timeout' => 10,
@@ -136,7 +138,7 @@ final class ClaudeProvider implements ProviderInterface
 				'anthropic-version' => self::API_VERSION,
 			],
 			'body'    => wp_json_encode([
-				'model'      => self::MODEL,
+				'model'      => $model,
 				'max_tokens' => 16,
 				'messages'   => [['role' => 'user', 'content' => 'Hi']],
 			]),
@@ -149,7 +151,7 @@ final class ClaudeProvider implements ProviderInterface
 		$statusCode = (int) wp_remote_retrieve_response_code($response);
 
 		if ($statusCode === 200) {
-			return ProviderStatus::ok(self::MODEL);
+			return ProviderStatus::ok($model);
 		}
 
 		$body  = json_decode(wp_remote_retrieve_body($response), true);
@@ -171,18 +173,29 @@ final class ClaudeProvider implements ProviderInterface
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Retrieve and decrypt the stored API key.
+	 * Retrieve and decrypt the Claude API key.
+	 * Reads from the per-provider option (Phase 2+).
 	 *
 	 * @throws \RuntimeException If the key is missing or cannot be decrypted.
 	 */
 	private function getDecryptedApiKey(): string
 	{
-		$encrypted = (string) get_option('esml_ai_api_key_encrypted', '');
+		$encrypted = (string) get_option('esml_ai_key_claude_encrypted', '');
 
 		if ($encrypted === '') {
 			throw new \RuntimeException('Claude API key is not configured.');
 		}
 
 		return EncryptionHelper::decrypt($encrypted);
+	}
+
+	/**
+	 * Return the configured model identifier, falling back to the default.
+	 */
+	private function getModel(): string
+	{
+		$model = (string) get_option('esml_ai_model_claude', self::DEFAULT_MODEL);
+
+		return $model !== '' ? $model : self::DEFAULT_MODEL;
 	}
 }

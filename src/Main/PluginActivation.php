@@ -78,9 +78,25 @@ final class PluginActivation
 		add_option('esml_translatable_post_types', wp_json_encode(['post', 'page']), '', 'yes');
 
 		// Not autoloaded (larger / infrequently accessed).
-		add_option('esml_ai_api_key_encrypted', '', '', 'no');
+		add_option('esml_ai_api_key_encrypted', '', '', 'no'); // Legacy — migrated to per-provider by 1.1.0.
 		add_option('esml_ai_custom_prompt', '', '', 'no');
 		add_option('esml_ai_monthly_calls', wp_json_encode(['month' => '', 'count' => 0]), '', 'no');
 		add_option('esml_ai_monthly_limit', 0, '', 'no');
+
+		// Phase 2: per-provider model selection (autoloaded, small).
+		add_option('esml_ai_model_claude', 'claude-sonnet-4-20250514', '', 'yes');
+		add_option('esml_ai_model_gemini', 'gemini-2.5-flash', '', 'yes');
+		add_option('esml_ai_model_openai', 'gpt-4o', '', 'yes');
+
+		// Phase 2: custom provider configuration (not autoloaded).
+		add_option('esml_ai_custom_endpoint', '', '', 'no');
+		add_option('esml_ai_custom_model', '', '', 'no');
+		add_option('esml_ai_custom_auth_header_key', 'Authorization', '', 'no');
+
+		// Phase 2: per-provider encrypted API keys (not autoloaded).
+		add_option('esml_ai_key_claude_encrypted', '', '', 'no');
+		add_option('esml_ai_key_gemini_encrypted', '', '', 'no');
+		add_option('esml_ai_key_openai_encrypted', '', '', 'no');
+		add_option('esml_ai_key_custom_encrypted', '', '', 'no');
 	}
 }

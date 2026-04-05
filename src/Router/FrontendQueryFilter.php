@@ -50,10 +50,18 @@ final class FrontendQueryFilter
 	/**
 	 * Decide whether this query needs language scoping.
 	 * Sets $shouldFilter so postsJoin / postsWhere know what to do.
+	 *
+	 * IMPORTANT: $shouldFilter is always reset to false at the top so that
+	 * postsJoin / postsWhere are guaranteed to be no-ops if this hook returns
+	 * early (admin, feed, etc.). This prevents stale state from a previous
+	 * pre_get_posts call leaking into a later query's postsJoin / postsWhere.
 	 */
 	public function preGetPosts(\WP_Query $query): void
 	{
+		// Always start clean — postsJoin / postsWhere read this flag.
 		$this->shouldFilter = false;
+		$this->langCode     = '';
+		$this->isDefault    = false;
 
 		// Skip admin, feeds, and queries that specify explicit post IDs.
 		if (is_admin() || $query->is_feed() || !empty($query->get('post__in'))) {

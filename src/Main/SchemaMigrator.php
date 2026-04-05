@@ -21,6 +21,8 @@ final class SchemaMigrator
 	private const MIGRATIONS = [
 		'1.0.0' => 'migration100CreateTables',
 		'1.0.1' => 'migration101ResetSeededLanguages',
+		'1.1.0' => 'migration110PerProviderKeys',
+		'1.1.1' => 'migration111GeminiModelUpdate',
 	];
 
 	public function __construct(
@@ -106,6 +108,52 @@ final class SchemaMigrator
             UNIQUE KEY uk_code (code),
             UNIQUE KEY uk_locale (locale)
         ) {$charset};");
+	}
+
+	/**
+	 * 1.1.1 — Replace the deprecated gemini-2.0-flash model identifier.
+	 *
+	 * gemini-2.0-flash was discontinued. Any existing installation that still
+	 * has it stored is updated to gemini-2.5-flash.
+	 */
+	private function migration111GeminiModelUpdate(): void
+	{
+		if ((string) get_option('esml_ai_model_gemini', '') === 'gemini-2.0-flash') {
+			update_option('esml_ai_model_gemini', 'gemini-2.5-flash', 'yes');
+		}
+	}
+
+	/**
+	 * 1.1.0 — Migrate Claude API key from the shared option to a per-provider slot.
+	 *
+	 * Old option: esml_ai_api_key_encrypted (single key, Claude-only)
+	 * New options: esml_ai_key_{provider}_encrypted (one per provider)
+	 *
+	 * The migration writes to the new slot first, verifies the ciphertext can be
+	 * decrypted, and only then removes the old option. If decryption fails (e.g.
+	 * the AUTH_KEY changed), both options are left intact and an admin notice will
+	 * prompt the user to re-enter their key.
+	 */
+	private function migration110PerProviderKeys(): void
+	{
+		$old = (string) get_option('esml_ai_api_key_encrypted', '');
+
+		if ($old === '') {
+			return; // No existing key — nothing to migrate.
+		}
+
+		// Write to the Claude-specific slot.
+		update_option('esml_ai_key_claude_encrypted', $old, false);
+
+		// Verify decryption succeeds before removing the old option.
+		try {
+			\EightshiftMultilang\Helpers\EncryptionHelper::decrypt($old);
+			delete_option('esml_ai_api_key_encrypted');
+		} catch (\RuntimeException $e) {
+			// Decryption failed — roll back the new slot and leave the old option.
+			// The admin will be prompted to re-enter the key.
+			delete_option('esml_ai_key_claude_encrypted');
+		}
 	}
 
 	/**

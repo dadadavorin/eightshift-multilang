@@ -183,10 +183,15 @@ final class PostListManager
 	 *  2. Admin bar language context stored in user meta (AdminLanguageSwitcher).
 	 *
 	 * Called on pre_get_posts.
+	 *
+	 * Note: we intentionally do NOT check is_main_query() here. In WordPress admin
+	 * the posts-list table creates its own WP_Query (not the global main query), so
+	 * is_main_query() always returns false for that query and the filter would never
+	 * fire. Instead we gate on the screen base and the query's post_type.
 	 */
 	public function applyLanguageFilter(\WP_Query $query): void
 	{
-		if (! is_admin() || ! $query->is_main_query()) {
+		if (! is_admin()) {
 			return;
 		}
 
@@ -194,6 +199,19 @@ final class PostListManager
 		$screen = function_exists('get_current_screen') ? get_current_screen() : null;
 
 		if ($screen?->base !== 'edit') {
+			return;
+		}
+
+		// Only act on queries for translatable post types.
+		// The list-table WP_Query always has post_type set; unrelated admin queries
+		// (e.g. nav-menu queries) typically do not, or target a different type.
+		$queryPostType    = $query->get('post_type');
+		$translatableTypes = $this->translatablePostTypes();
+
+		// post_type may be a string or an array — normalise.
+		$queryTypes = is_array($queryPostType) ? $queryPostType : [$queryPostType];
+
+		if (empty(array_intersect($queryTypes, $translatableTypes))) {
 			return;
 		}
 
