@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/davorin/Sites/meditationapp/**)",
+      "Bash(wp --allow-root db query \"SELECT post_type, post_status, COUNT\\(*\\) as cnt FROM wp_posts WHERE post_type=''page'' GROUP BY post_status\")",
+      "Bash(wp db:*)",
+      "Bash(/usr/local/bin/wp db:*)",
+      "Bash(/opt/homebrew/bin/wp db:*)",
+      "Read(//Applications/MAMP/bin/**)",
+      "Read(//Applications/**)",
+      "Read(//Users/davorin/Library/**)",
+      "Bash(PHP_BIN=/opt/homebrew/Cellar/php@8.3/8.3.14/bin/php)",
+      "Bash($PHP_BIN /opt/homebrew/bin/wp db query \"SELECT post_type, post_status, COUNT\\(*\\) as cnt FROM wp_posts WHERE post_type=''page'' GROUP BY post_status\")"
+    ]
+  }
+}
