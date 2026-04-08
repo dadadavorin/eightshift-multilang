@@ -3,7 +3,7 @@
 A lightweight, AI-powered multilingual plugin for WordPress sites built on the Eightshift boilerplate.
 
 ## Status
-🚧 Under active development — Phase 1 (MVP)
+🚧 Under active development — Phase 2 (MVP)
 
 ## Requirements
 - WordPress 6.4+
