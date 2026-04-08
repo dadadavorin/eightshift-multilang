@@ -54,12 +54,12 @@ final class EditorSidebar
 
 		// Register style only if the file was compiled (it may be absent during
 		// development when only JS hot-reload is active).
-		$styleFile = ESML_PLUGIN_DIR . 'build/editor/index.css';
+		$styleFile = ESML_PLUGIN_DIR . 'build/editor/style-index.css';
 
 		if (file_exists($styleFile)) {
 			wp_enqueue_style(
 				self::ASSET_HANDLE,
-				ESML_PLUGIN_URL . 'build/editor/index.css',
+				ESML_PLUGIN_URL . 'build/editor/style-index.css',
 				[],
 				$asset['version'],
 			);

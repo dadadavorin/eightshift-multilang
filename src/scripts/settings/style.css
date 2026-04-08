@@ -1,0 +1,419 @@
+/*
+ * Eightshift Multilang — Settings page styles
+ * Compiled by @wordpress/scripts and extracted to build/settings/index.css
+ */
+
+/* ── Custom properties ──────────────────────────────────────────────────── */
+.esml-settings {
+	--esml-brand:        #2271b1;
+	--esml-brand-dark:   #135e96;
+	--esml-brand-light:  #dce8f5;
+	--esml-success:      #00a32a;
+	--esml-danger:       #d63638;
+	--esml-warning:      #dba617;
+	--esml-border:       #dcdcde;
+	--esml-bg:           #ffffff;
+	--esml-bg-subtle:    #f6f7f7;
+	--esml-text:         #1e1e1e;
+	--esml-text-muted:   #646970;
+	--esml-radius-sm:    4px;
+	--esml-radius-md:    8px;
+	--esml-shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Page root ──────────────────────────────────────────────────────────── */
+.esml-settings {
+	max-width: 860px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.esml-settings__title {
+	font-size: 20px;
+	font-weight: 600;
+	margin: 0 0 16px;
+	color: var(--esml-text);
+}
+
+/* ── Tab navigation ─────────────────────────────────────────────────────── */
+.esml-settings__tabs.nav-tab-wrapper {
+	border-bottom: 1px solid var(--esml-border);
+	margin-bottom: 0;
+	padding-top: 8px;
+	background: transparent;
+}
+
+.esml-settings__tabs .nav-tab {
+	font-size: 13px;
+	font-weight: 500;
+	padding: 9px 18px;
+	margin-left: 0;
+	margin-right: 4px;
+	border-radius: var(--esml-radius-sm) var(--esml-radius-sm) 0 0;
+	border: 1px solid transparent;
+	border-bottom: none;
+	cursor: pointer;
+	background: transparent;
+	color: var(--esml-text-muted);
+	transition: background 0.12s ease, color 0.12s ease;
+}
+
+.esml-settings__tabs .nav-tab:hover:not(.nav-tab-active) {
+	background: var(--esml-bg-subtle);
+	color: var(--esml-text);
+	border-color: var(--esml-border);
+}
+
+.esml-settings__tabs .nav-tab-active {
+	background: var(--esml-bg);
+	color: var(--esml-text);
+	border-color: var(--esml-border);
+	border-bottom-color: var(--esml-bg);
+	font-weight: 600;
+}
+
+/* ── Panel — white card below the tabs ──────────────────────────────────── */
+.esml-settings__panel {
+	background: var(--esml-bg);
+	border: 1px solid var(--esml-border);
+	border-top: none;
+	border-radius: 0 0 var(--esml-radius-md) var(--esml-radius-md);
+	padding: 28px 32px 32px;
+	box-shadow: var(--esml-shadow-sm);
+}
+
+/* ── Tab content ────────────────────────────────────────────────────────── */
+.esml-settings-tab {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 22px;
+}
+
+/* Full-width elements that should stretch */
+.esml-settings-tab > .components-notice,
+.esml-settings-tab > .components-base-control,
+.esml-settings-tab > .esml-languages-table,
+.esml-settings-tab > .esml-provider-config-card,
+.esml-settings-tab > .esml-usage-card,
+.esml-settings-tab > .esml-add-language,
+.esml-settings-tab > .esml-settings-tab__footer {
+	width: 100%;
+	align-self: stretch;
+}
+
+/* Reset Notice margin to fit the flex gap */
+.esml-settings-tab > .components-notice {
+	margin: 0;
+	box-sizing: border-box;
+}
+
+/* ── WP component overrides inside the tab ──────────────────────────────── */
+
+/* Remove default bottom margin — flex gap handles spacing */
+.esml-settings-tab .components-base-control {
+	margin-bottom: 0;
+}
+
+/* Styled label */
+.esml-settings-tab .components-base-control__label,
+.esml-settings-tab .components-input-control__label {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--esml-text-muted);
+	margin-bottom: 6px;
+}
+
+/* Inputs / selects / textareas */
+.esml-settings-tab .components-select-control__input,
+.esml-settings-tab .components-text-control__input,
+.esml-settings-tab .components-textarea-control__input {
+	border: 1px solid var(--esml-border) !important;
+	border-radius: var(--esml-radius-sm) !important;
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+	font-size: 13px;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.esml-settings-tab .components-select-control__input:focus,
+.esml-settings-tab .components-text-control__input:focus,
+.esml-settings-tab .components-textarea-control__input:focus {
+	border-color: var(--esml-brand) !important;
+	box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.18) !important;
+	outline: none !important;
+}
+
+/* Help text */
+.esml-settings-tab .components-base-control__help {
+	font-size: 12px;
+	color: var(--esml-text-muted);
+	margin-top: 5px;
+}
+
+/* ── Provider config card ───────────────────────────────────────────────── */
+.esml-provider-config-card.components-card {
+	border: 1px solid var(--esml-border);
+	border-radius: var(--esml-radius-md);
+	box-shadow: var(--esml-shadow-sm);
+	overflow: hidden;
+	margin: 0;
+}
+
+.esml-provider-config-card .components-card-body {
+	padding: 20px 24px;
+}
+
+.esml-provider-config-card__heading {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--esml-text);
+	margin: 0 0 18px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid var(--esml-border);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.esml-provider-config-card__heading::before {
+	content: "";
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--esml-success);
+	flex-shrink: 0;
+}
+
+.esml-provider-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+/* ── Usage card ─────────────────────────────────────────────────────────── */
+.esml-usage-card.components-card {
+	border: 1px solid var(--esml-border);
+	border-left: 4px solid var(--esml-brand);
+	border-radius: var(--esml-radius-md);
+	background: var(--esml-bg-subtle);
+	box-shadow: none;
+}
+
+.esml-usage-card .components-card-body {
+	padding: 14px 18px;
+	font-size: 13px;
+	color: var(--esml-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.esml-usage-card strong {
+	color: var(--esml-text);
+	font-weight: 600;
+}
+
+/* ── Tab footer (save + unsaved hint) ───────────────────────────────────── */
+.esml-settings-tab__footer {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding-top: 6px;
+	border-top: 1px solid var(--esml-bg-subtle);
+}
+
+.esml-settings-tab__unsaved-hint {
+	font-size: 12px;
+	color: var(--esml-text-muted);
+	font-style: italic;
+}
+
+/* ── Languages table ────────────────────────────────────────────────────── */
+.esml-languages-table.widefat {
+	border: 1px solid var(--esml-border);
+	border-radius: var(--esml-radius-md);
+	border-collapse: separate;
+	border-spacing: 0;
+	overflow: hidden;
+	box-shadow: var(--esml-shadow-sm);
+	table-layout: auto;
+}
+
+.esml-languages-table thead th {
+	background: var(--esml-bg-subtle);
+	color: var(--esml-text-muted);
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--esml-border);
+	white-space: nowrap;
+}
+
+/* Column widths */
+.esml-languages-table thead th:first-child { width: 72px; }  /* Code */
+.esml-languages-table thead th:nth-child(4) { width: 72px; } /* Active */
+.esml-languages-table thead th:nth-child(5) { width: 110px; } /* Default */
+.esml-languages-table thead th:last-child   { width: 90px; }  /* Actions */
+
+.esml-languages-table tbody tr {
+	transition: background 0.1s ease;
+}
+
+.esml-languages-table tbody tr:hover {
+	background: #f9f9fb;
+}
+
+.esml-languages-table tbody tr.esml-lang--default {
+	background: #f0f6ff;
+}
+
+.esml-languages-table tbody tr.esml-lang--pending {
+	background: #fffbf0;
+}
+
+.esml-languages-table td {
+	padding: 9px 14px;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 13px;
+	vertical-align: middle;
+	color: var(--esml-text);
+}
+
+.esml-languages-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+/* Language code pill */
+.esml-languages-table td code {
+	display: inline-flex;
+	align-items: center;
+	background: var(--esml-brand-light);
+	border: 1px solid #b8d3ef;
+	border-radius: 20px;
+	padding: 1px 9px;
+	font-size: 11px;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	color: var(--esml-brand-dark);
+	line-height: 1.6;
+}
+
+/* Checkbox alignment */
+.esml-languages-table .components-checkbox-control {
+	margin-bottom: 0;
+}
+
+.esml-languages-table .components-checkbox-control .components-checkbox-control__label {
+	display: none;
+}
+
+/* Action buttons in the table */
+.esml-languages-table .components-button.is-link {
+	font-size: 12px;
+	padding: 0;
+	height: auto;
+	min-height: 0;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.esml-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 9px;
+	border-radius: 20px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.esml-badge--default {
+	background: var(--esml-brand);
+	color: #fff;
+}
+
+.esml-badge--unlinked {
+	background: var(--esml-bg-subtle);
+	border: 1px solid var(--esml-border);
+	color: var(--esml-text-muted);
+}
+
+/* ── Add language details panel ─────────────────────────────────────────── */
+.esml-add-language {
+	border: 1px solid var(--esml-border);
+	border-radius: var(--esml-radius-md);
+	overflow: hidden;
+	background: var(--esml-bg-subtle);
+}
+
+.esml-add-language > summary {
+	padding: 13px 18px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	user-select: none;
+	list-style: none;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	color: var(--esml-brand);
+	transition: background 0.1s ease;
+}
+
+.esml-add-language > summary:hover {
+	background: rgba(34, 113, 177, 0.06);
+}
+
+/* Plus / minus toggle icon */
+.esml-add-language > summary::before {
+	content: "";
+	display: inline-flex;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--esml-brand);
+	color: #fff;
+	font-size: 16px;
+	line-height: 18px;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 4v16M4 12h16' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+	background-size: 12px;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+.esml-add-language[open] > summary::before {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12h16' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Hide the native disclosure triangle */
+.esml-add-language > summary::-webkit-details-marker { display: none; }
+
+.esml-add-language__form {
+	padding: 20px 24px;
+	border-top: 1px solid var(--esml-border);
+	background: var(--esml-bg);
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px 24px;
+}
+
+/* "Add language" button spans both columns */
+.esml-add-language__form > .components-button {
+	grid-column: 1 / -1;
+}
+
+/* Form fields within the add form */
+.esml-add-language__form .components-base-control {
+	margin-bottom: 0;
+}

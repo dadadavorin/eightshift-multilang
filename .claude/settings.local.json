@@ -26,7 +26,8 @@
       "Bash(php -l /Users/davorin/Sites/meditationapp/wp-content/plugins/eightshift-multilang/src/AI/TranslationEngine.php)",
       "Bash(python3 -c \"import sys; print\\(repr\\(sys.stdin.read\\(\\)[:300]\\)\\)\")",
       "Bash(php -l /Users/davorin/Sites/meditationapp/wp-content/plugins/eightshift-multilang/src/Parser/MarkupRebuilder.php)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

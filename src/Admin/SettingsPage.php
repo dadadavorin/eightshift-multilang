@@ -95,12 +95,16 @@ final class SettingsPage
 			true,
 		);
 
-		wp_enqueue_style(
-			self::ASSET_HANDLE,
-			ESML_PLUGIN_URL . 'build/settings/index.css',
-			[],
-			$asset['version'],
-		);
+		$styleFile = ESML_PLUGIN_DIR . 'build/settings/style-index.css';
+
+		if (file_exists($styleFile)) {
+			wp_enqueue_style(
+				self::ASSET_HANDLE,
+				ESML_PLUGIN_URL . 'build/settings/style-index.css',
+				[],
+				$asset['version'],
+			);
+		}
 
 		// Pass data the React app needs before its first REST call.
 		wp_localize_script(self::ASSET_HANDLE, 'esmSettings', $this->scriptData());

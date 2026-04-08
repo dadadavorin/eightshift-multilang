@@ -37,6 +37,60 @@ final class PostListManager
 	public function register(): void
 	{
 		add_action('admin_init', [$this, 'registerPostTypeHooks']);
+		add_action('admin_enqueue_scripts', [$this, 'enqueueStyles']);
+	}
+
+	/**
+	 * Enqueue inline badge/sync-dot styles on post list screens.
+	 * These classes are rendered by PHP and not covered by the React bundles.
+	 */
+	public function enqueueStyles(): void
+	{
+		$screen = get_current_screen();
+
+		if (! $screen || $screen->base !== 'edit') {
+			return;
+		}
+
+		if (! in_array($screen->post_type, $this->translatablePostTypes(), true)) {
+			return;
+		}
+
+		// Piggyback on the WP list-table style so we always have a registered handle.
+		wp_add_inline_style('wp-admin', '
+			.esml-badge {
+				display: inline-flex;
+				align-items: center;
+				padding: 2px 9px;
+				border-radius: 20px;
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				line-height: 1.6;
+				white-space: nowrap;
+			}
+			.esml-badge--default {
+				background: #2271b1;
+				color: #fff;
+			}
+			.esml-badge--unlinked {
+				background: #f6f7f7;
+				border: 1px solid #dcdcde;
+				color: #646970;
+			}
+			.esml-sync-dot {
+				display: inline-block;
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				vertical-align: middle;
+				margin-left: 5px;
+			}
+			.esml-sync-dot--ok    { background: #00a32a; }
+			.esml-sync-dot--stale { background: #dba617; }
+			.column-esml_language { width: 120px; }
+		');
 	}
 
 	/**

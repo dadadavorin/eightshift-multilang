@@ -7,6 +7,7 @@
  *
  * window.esmEditor is localised by EditorSidebar::scriptData().
  */
+import './style.css';
 import apiFetch from '@wordpress/api-fetch';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar } from '@wordpress/editor';

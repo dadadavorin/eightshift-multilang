@@ -4,6 +4,7 @@
  * Mounts the React settings app into #esml-settings-root.
  * window.esmSettings is localised by SettingsPage::scriptData().
  */
+import './style.css';
 import apiFetch from '@wordpress/api-fetch';
 import { createRoot } from '@wordpress/element';
 import SettingsApp from './components/SettingsApp';
