@@ -125,20 +125,43 @@ final class MarkupRebuilder
 
 			// Build an exact search string that matches the attribute as it appears
 			// in the JSON: "attrName":"originalValue"
-			// We allow optional whitespace around the colon to be safe.
-			$search = '"' . $attrName . '":' . $encodedOriginal;
+			$search  = '"' . $attrName . '":' . $encodedOriginal;
 			$replace = '"' . $attrName . '":' . $encodedTranslated;
 
-			// Use a single str_replace within the block markup. The attribute name
-			// + original value combination is unique within a block's JSON.
-			$markup = str_replace($search, $replace, $markup);
+			$newMarkup = str_replace($search, $replace, $markup);
 
-			// Fallback: try with a space after the colon (some formatters add one).
-			if ($markup === str_replace($search, $replace, $markup)) {
-				$searchWithSpace = '"' . $attrName . '": ' . $encodedOriginal;
-				$replaceWithSpace = '"' . $attrName . '": ' . $encodedTranslated;
-				$markup = str_replace($searchWithSpace, $replaceWithSpace, $markup);
+			if ($newMarkup === $markup) {
+				// Primary search found nothing.  This happens when the post was saved
+				// via a code path that decoded certain JSON unicode escapes back to
+				// their literal characters before storage.  The most common cases are:
+				//
+				//   \u0027  →  '  (apostrophe decoded by the REST API json_decode)
+				//   \u0026  →  &  (ampersand decoded similarly)
+				//
+				// Generate a fallback search that replaces those escape sequences with
+				// their literal counterparts and retry.  Note: \u003c / \u003e are
+				// always stored as literal escape sequences because the outer JSON
+				// double-escapes them (\\u003c → \u003c after wp_unslash), so we do
+				// not need a fallback for angle brackets.
+				$altOriginal = str_replace(
+					['\u0027', '\u0026'],
+					["'",      '&'],
+					$encodedOriginal
+				);
+
+				if ($altOriginal !== $encodedOriginal) {
+					$altTranslated = str_replace(
+						['\u0027', '\u0026'],
+						["'",      '&'],
+						$encodedTranslated
+					);
+					$altSearch  = '"' . $attrName . '":' . $altOriginal;
+					$altReplace = '"' . $attrName . '":' . $altTranslated;
+					$newMarkup  = str_replace($altSearch, $altReplace, $markup);
+				}
 			}
+
+			$markup = $newMarkup;
 		}
 
 		return $markup;

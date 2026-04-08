@@ -154,7 +154,7 @@ final class TranslationEngine
 				'post_type'    => $sourcePost->post_type,
 				'post_status'  => 'draft',
 				'post_title'   => $translatedTitle,
-				'post_content' => wp_kses_post($translatedContent),
+				'post_content' => $translatedContent,
 				'post_name'    => $translatedSlug,
 				'post_parent'  => $this->resolveTranslatedParent(
 					(int) $sourcePost->post_parent,
@@ -165,7 +165,21 @@ final class TranslationEngine
 			$targetLanguageCode
 		);
 
-		$newPostId = wp_insert_post($postArgs, true);
+		// wp_insert_post calls wp_unslash() on $postarr at the very top, which
+		// runs PHP's stripslashes() on every string value.  stripslashes() strips
+		// the backslash before \u, turning JSON unicode escapes like \u003c into
+		// u003c and corrupting block attribute JSON.
+		//
+		// The WordPress REST API solves this by passing wp_slash($postarr) to
+		// wp_insert_post, so that \u003c → \\u003c before the call, and then
+		// wp_unslash restores it back to \u003c.  We do the same here.
+		//
+		// Additionally we remove the kses filters around the call so that
+		// wp_filter_post_kses (hooked on content_save_pre) does not re-process
+		// the already-correct block comment JSON.
+		kses_remove_filters();
+		$newPostId = wp_insert_post(wp_slash($postArgs), true);
+		kses_init_filters();
 
 		if (is_wp_error($newPostId)) {
 			throw new TranslationException(

@@ -22,7 +22,11 @@
       "Bash(php -r \"error_log\\('test-esml-debug'\\);\")",
       "Read(//Users/davorin/**)",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(php -l /Users/davorin/Sites/meditationapp/wp-content/plugins/eightshift-multilang/src/AI/TranslationEngine.php)",
+      "Bash(python3 -c \"import sys; print\\(repr\\(sys.stdin.read\\(\\)[:300]\\)\\)\")",
+      "Bash(php -l /Users/davorin/Sites/meditationapp/wp-content/plugins/eightshift-multilang/src/Parser/MarkupRebuilder.php)",
+      "Bash(bun run:*)"
     ]
   }
 }
