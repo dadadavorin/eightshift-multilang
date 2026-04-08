@@ -73,6 +73,32 @@ final class FrontendQueryFilter
 			return;
 		}
 
+		// Resolve esml_path → page_id for language-prefixed singular URLs.
+		//
+		// The UrlRouter rewrite rule maps  /hr/cesto-postavljana-pitanja/  to
+		//   index.php?esml_language=hr&esml_path=cesto-postavljana-pitanja
+		// WordPress has no built-in handling for esml_path, so without this
+		// block the main query would find zero posts and the_content() would
+		// never run, leaving the page body empty.
+		//
+		// We resolve the slug here (before the DB query) and set page_id so
+		// WordPress treats the request as a normal singular page load.  No
+		// language JOIN/WHERE is needed after that — the post was already
+		// identified unambiguously by ID.
+		if ($query->is_main_query()) {
+			$esmlPath = $query->get('esml_path');
+			if ($esmlPath !== '') {
+				$post = get_page_by_path((string) $esmlPath, OBJECT, get_post_types(['public' => true]));
+				if ($post instanceof \WP_Post) {
+					$query->set('page_id', $post->ID);
+					$query->set('post_type', $post->post_type);
+					$query->set('esml_path', '');
+					// No language-scoping JOIN/WHERE needed for a direct ID lookup.
+					return;
+				}
+			}
+		}
+
 		$lang = LanguageDetector::getCurrentLanguage();
 
 		if ($lang === null || $lang === '') {
