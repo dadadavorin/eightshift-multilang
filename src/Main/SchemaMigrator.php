@@ -23,6 +23,8 @@ final class SchemaMigrator
 		'1.0.1' => 'migration101ResetSeededLanguages',
 		'1.1.0' => 'migration110PerProviderKeys',
 		'1.1.1' => 'migration111GeminiModelUpdate',
+		'1.1.2' => 'migration112AddLabelSuffix',
+		'1.1.3' => 'migration113AddTitleSuffix',
 	];
 
 	public function __construct(
@@ -108,6 +110,58 @@ final class SchemaMigrator
             UNIQUE KEY uk_code (code),
             UNIQUE KEY uk_locale (locale)
         ) {$charset};");
+	}
+
+	/**
+	 * 1.1.2 — Add 'Label' and 'Title' to the translatable attribute suffixes option.
+	 *
+	 * The original default was ["Content"] which missed Eightshift block attributes
+	 * that use the 'Label' suffix (e.g. accordionSimpleItemLabel) or the 'Title'
+	 * suffix (e.g. audioPlayerTitle).
+	 * This migration appends any missing suffixes to the existing list, leaving
+	 * user-added suffixes intact.
+	 */
+	private function migration112AddLabelSuffix(): void
+	{
+		$stored = json_decode((string) get_option('esml_translatable_suffixes', ''), true);
+
+		if (! is_array($stored)) {
+			return;
+		}
+
+		$toAdd   = ['Label', 'Title'];
+		$changed = false;
+
+		foreach ($toAdd as $suffix) {
+			if (! in_array($suffix, $stored, true)) {
+				$stored[] = $suffix;
+				$changed  = true;
+			}
+		}
+
+		if ($changed) {
+			update_option('esml_translatable_suffixes', wp_json_encode($stored), 'yes');
+		}
+	}
+
+	/**
+	 * 1.1.3 — Add 'Title' to the translatable attribute suffixes option.
+	 *
+	 * Covers Eightshift block attributes such as audioPlayerTitle that were not
+	 * included in the initial defaults.
+	 */
+	private function migration113AddTitleSuffix(): void
+	{
+		$stored = json_decode((string) get_option('esml_translatable_suffixes', ''), true);
+
+		if (! is_array($stored)) {
+			return;
+		}
+
+		if (! in_array('Title', $stored, true)) {
+			$stored[] = 'Title';
+			update_option('esml_translatable_suffixes', wp_json_encode($stored), 'yes');
+		}
 	}
 
 	/**

@@ -73,7 +73,7 @@ final class PluginActivation
 		// Autoloaded (small, read on every request).
 		add_option('esml_version', '', '', 'yes');
 		add_option('esml_url_mode', 'subdirectory', '', 'yes');
-		add_option('esml_translatable_suffixes', wp_json_encode(['Content']), '', 'yes');
+		add_option('esml_translatable_suffixes', wp_json_encode(['Content', 'Label', 'Title']), '', 'yes');
 		add_option('esml_ai_provider', 'claude', '', 'yes');
 		add_option('esml_translatable_post_types', wp_json_encode(['post', 'page']), '', 'yes');
 

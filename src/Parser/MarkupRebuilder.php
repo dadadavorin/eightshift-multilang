@@ -12,6 +12,15 @@ namespace EightshiftMultilang\Parser;
  * whitespace, and avoids round-trip differences. Blocks are processed from
  * last to first (by content offset) so that earlier offsets are not shifted
  * by replacements made in later blocks.
+ *
+ * Wrapper blocks (opening + closing tags) require special handling:
+ * only the opening tag is replaced, never the full rawMarkup. Replacing
+ * the full rawMarkup would:
+ *   (a) Overwrite already-translated inner blocks (their translations were
+ *       applied in earlier iterations at higher offsets), and
+ *   (b) Corrupt surrounding markup when the inner translation changed the
+ *       byte length, because len(rawMarkup) no longer matches the actual
+ *       block span in $result.
  */
 final class MarkupRebuilder
 {
@@ -71,16 +80,25 @@ final class MarkupRebuilder
 				continue;
 			}
 
-			// Replace attribute values inside this block's markup.
-			$newMarkup = $this->applyTranslationsToMarkup($block->rawMarkup, $blockTranslations);
+			if ($block->isWrapper()) {
+				// WRAPPER BLOCK: only modify the opening tag (the comment up to and
+				// including the first "-->").  The inner content must not be touched
+				// here because inner blocks were already translated in earlier loop
+				// iterations (higher offsets), and their byte lengths may have changed
+				// so len(rawMarkup) no longer matches the actual span in $result.
+				$openingLen    = $this->openingTagLength($block->rawMarkup);
+				$openingTag    = substr($block->rawMarkup, 0, $openingLen);
+				$newOpeningTag = $this->applyTranslationsToMarkup($openingTag, $blockTranslations);
 
-			// Swap the original block markup in the result using the known offset.
-			$result = substr_replace(
-				$result,
-				$newMarkup,
-				$block->contentOffset,
-				strlen($block->rawMarkup)
-			);
+				if ($newOpeningTag !== $openingTag) {
+					$result = substr_replace($result, $newOpeningTag, $block->contentOffset, $openingLen);
+				}
+			} else {
+				// SELF-CLOSING BLOCK: the full rawMarkup equals exactly the block
+				// span in $result (no inner blocks can have shifted its length).
+				$newMarkup = $this->applyTranslationsToMarkup($block->rawMarkup, $blockTranslations);
+				$result    = substr_replace($result, $newMarkup, $block->contentOffset, strlen($block->rawMarkup));
+			}
 		}
 
 		return $result;
@@ -127,18 +145,62 @@ final class MarkupRebuilder
 	}
 
 	/**
+	 * Return the byte length of a wrapper block's opening tag — from the start
+	 * of the block comment up to and including the first occurrence of "-->".
+	 *
+	 * Example:
+	 *   <!-- wp:eightshift-boilerplate/accordion-simple-item {"accordionSimpleItemLabel":"FAQ"} -->
+	 *   ↑                                                                                       ↑
+	 *   offset 0                                                                     openingLen-1
+	 *
+	 * @param string $rawMarkup The raw markup of a wrapper block.
+	 * @return int              Byte length of the opening tag (including "-->").
+	 */
+	private function openingTagLength(string $rawMarkup): int
+	{
+		$pos = strpos($rawMarkup, '-->');
+		return $pos !== false ? $pos + 3 : strlen($rawMarkup);
+	}
+
+	/**
 	 * JSON-encode a scalar value to its inline JSON representation (with quotes for strings).
 	 *
-	 * e.g. 'Hello "World"' → '"Hello \"World\""'
+	 * Must match Gutenberg's serializeAttributes() output exactly so that our
+	 * str_replace search patterns find the right substrings in post_content.
+	 *
+	 * Gutenberg uses JSON.stringify (which does NOT escape forward slashes) then
+	 * applies four extra character replacements for XSS safety:
+	 *   & → \u0026   < → \u003c   > → \u003e   ' → \u0027
+	 *
+	 * PHP's json_encode defaults differ in two ways:
+	 *   1. It DOES escape '/' as '\/' unless JSON_UNESCAPED_SLASHES is set.
+	 *   2. It does NOT apply the four Gutenberg XSS replacements.
 	 *
 	 * @param string $value The original string value.
 	 * @return string       The JSON-encoded representation including surrounding quotes.
 	 */
 	private function jsonEncodeValue(string $value): string
 	{
-		$encoded = json_encode($value, \JSON_UNESCAPED_UNICODE);
+		// JSON_UNESCAPED_UNICODE preserves multi-byte characters (e.g. accented
+		// letters) without \uXXXX encoding — matching JSON.stringify behaviour.
+		// JSON_UNESCAPED_SLASHES prevents PHP from escaping '/' to '\/' —
+		// Gutenberg's JSON.stringify never escapes forward slashes.
+		$encoded = json_encode($value, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
 
-		// json_encode never returns false for a string, but satisfy static analysis.
-		return $encoded !== false ? $encoded : '"' . addslashes($value) . '"';
+		if ($encoded === false) {
+			return '"' . addslashes($value) . '"';
+		}
+
+		// Replicate Gutenberg's serializeAttributes() post-stringify replacements
+		// so the encoded value is byte-for-byte identical to what is stored in
+		// post_content.  These replacements are safe to apply to the full encoded
+		// string because the only characters that appear outside string literals in
+		// a single-value JSON encoding are the surrounding double-quote characters,
+		// which none of the four search characters can match.
+		return str_replace(
+			['&',       '<',       '>',       "'"],
+			['\u0026', '\u003c', '\u003e', '\u0027'],
+			$encoded
+		);
 	}
 }
