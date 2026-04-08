@@ -10,7 +10,19 @@
       "Read(//Applications/**)",
       "Read(//Users/davorin/Library/**)",
       "Bash(PHP_BIN=/opt/homebrew/Cellar/php@8.3/8.3.14/bin/php)",
-      "Bash($PHP_BIN /opt/homebrew/bin/wp db query \"SELECT post_type, post_status, COUNT\\(*\\) as cnt FROM wp_posts WHERE post_type=''page'' GROUP BY post_status\")"
+      "Bash($PHP_BIN /opt/homebrew/bin/wp db query \"SELECT post_type, post_status, COUNT\\(*\\) as cnt FROM wp_posts WHERE post_type=''page'' GROUP BY post_status\")",
+      "Bash(wp post:*)",
+      "Bash(curl -sk https://meditationapp.test/hr/cesto-postavljana-pitanja/)",
+      "Bash(curl -sk https://meditationapp.test/faq/)",
+      "Bash(wp --path=/Users/davorin/Sites/meditationapp post get 250 --fields=ID,post_status,post_type,page_template)",
+      "Bash(wp eval:*)",
+      "Bash(curl -sk \"https://meditationapp.test/hr/cesto-postavljana-pitanja/\")",
+      "Bash(php -l /Users/davorin/Sites/meditationapp/wp-content/plugins/eightshift-multilang/src/Router/FrontendQueryFilter.php)",
+      "Bash(php -r \"echo opcache_get_status\\(\\) ? 'OPcache enabled' : 'OPcache disabled';\")",
+      "Bash(php -r \"error_log\\('test-esml-debug'\\);\")",
+      "Read(//Users/davorin/**)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
