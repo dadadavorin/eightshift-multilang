@@ -3,6 +3,59 @@
  * Compiled by @wordpress/scripts and extracted to build/editor/index.css
  */
 
+/* ── Language Switcher block — editor preview ───────────────────────────── */
+.esml-switcher-editor-preview {
+	border: 1px dashed #b5bcc2;
+	border-radius: 2px;
+	background: #f8f9fa;
+}
+
+.esml-switcher-editor-preview__inner {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 14px 8px;
+	color: #646970;
+}
+
+.esml-switcher-editor-preview__inner .dashicons {
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+	flex-shrink: 0;
+}
+
+.esml-switcher-editor-preview__inner p {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.esml-switcher-editor-preview__inner small {
+	font-size: 11px;
+	color: #8c8f94;
+}
+
+.esml-switcher-editor-preview__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 0 14px 12px;
+}
+
+.esml-switcher-preview-tag {
+	display: inline-flex;
+	align-items: center;
+	background: #f0f6ff;
+	border: 1px solid #b8d3ef;
+	border-radius: 20px;
+	padding: 1px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	color: #135e96;
+	line-height: 1.6;
+}
+
 /* ── Sidebar: empty state ───────────────────────────────────────────────── */
 .esml-sidebar__empty {
 	display: block;
