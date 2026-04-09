@@ -106,8 +106,17 @@ final class Main
 			['id' => 'claude-haiku-4-5',          'label' => 'Claude Haiku 4'],
 		]);
 		$this->providerRegistry->register('gemini', 'Google Gemini', fn() => new GeminiProvider($responseParser), [
-			['id' => 'gemini-2.5-flash', 'label' => 'Gemini 2.5 Flash'],
-			['id' => 'gemini-2.5-pro',   'label' => 'Gemini 2.5 Pro'],
+			['id' => 'gemini-3.1-pro-preview',       'label' => 'Gemini 3.1 Pro'],
+			['id' => 'gemini-3.1-flash-lite-preview', 'label' => 'Gemini 3.1 Flash Lite'],
+			['id' => 'gemini-3-flash-preview',        'label' => 'Gemini 3 Flash'],
+			['id' => 'gemini-2.5-pro',                'label' => 'Gemini 2.5 Pro'],
+			['id' => 'gemini-2.5-flash',              'label' => 'Gemini 2.5 Flash'],
+			['id' => 'gemini-2.5-flash-lite',         'label' => 'Gemini 2.5 Flash Lite'],
+			['id' => 'gemma-3-4b-it',                 'label' => 'Gemma 3 4B'],
+			['id' => 'gemma-3-12b-it',                'label' => 'Gemma 3 12B'],
+			['id' => 'gemma-3-27b-it',                'label' => 'Gemma 3 27B'],
+			['id' => 'gemma-4-26b-moe-it',            'label' => 'Gemma 4 26B'],
+			['id' => 'gemma-4-31b-it',                'label' => 'Gemma 4 31B'],
 		]);
 		$this->providerRegistry->register('openai', 'OpenAI', fn() => new OpenAIProvider($responseParser), [
 			['id' => 'gpt-4o',       'label' => 'GPT-4o'],
