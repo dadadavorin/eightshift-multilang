@@ -24,11 +24,7 @@ use EightshiftMultilang\Translations\TranslationRepository;
  */
 final class PostListManager
 {
-	/** The active filter value for the current request. Null = no filtering. */
-	private ?string $activeFilter = null;
-
-	/** Whether the active filter targets the default language (requires LEFT JOIN). */
-	private bool $isDefaultFilter = false;
+	// No per-instance filter state needed — closures capture values directly.
 
 	public function __construct(
 		private readonly TranslationRepository $translationRepository,
@@ -41,6 +37,60 @@ final class PostListManager
 	public function register(): void
 	{
 		add_action('admin_init', [$this, 'registerPostTypeHooks']);
+		add_action('admin_enqueue_scripts', [$this, 'enqueueStyles']);
+	}
+
+	/**
+	 * Enqueue inline badge/sync-dot styles on post list screens.
+	 * These classes are rendered by PHP and not covered by the React bundles.
+	 */
+	public function enqueueStyles(): void
+	{
+		$screen = get_current_screen();
+
+		if (! $screen || $screen->base !== 'edit') {
+			return;
+		}
+
+		if (! in_array($screen->post_type, $this->translatablePostTypes(), true)) {
+			return;
+		}
+
+		// Piggyback on the WP list-table style so we always have a registered handle.
+		wp_add_inline_style('wp-admin', '
+			.esml-badge {
+				display: inline-flex;
+				align-items: center;
+				padding: 2px 9px;
+				border-radius: 20px;
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				line-height: 1.6;
+				white-space: nowrap;
+			}
+			.esml-badge--default {
+				background: #2271b1;
+				color: #fff;
+			}
+			.esml-badge--unlinked {
+				background: #f6f7f7;
+				border: 1px solid #dcdcde;
+				color: #646970;
+			}
+			.esml-sync-dot {
+				display: inline-block;
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				vertical-align: middle;
+				margin-left: 5px;
+			}
+			.esml-sync-dot--ok    { background: #00a32a; }
+			.esml-sync-dot--stale { background: #dba617; }
+			.column-esml_language { width: 120px; }
+		');
 	}
 
 	/**
@@ -176,17 +226,25 @@ final class PostListManager
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Detect the active language filter and attach JOIN + WHERE hooks.
+	 * Detect the active language filter and attach a posts_clauses hook.
 	 *
 	 * Priority order:
 	 *  1. Explicit ?esml_language_filter param (dropdown selection, including "All").
 	 *  2. Admin bar language context stored in user meta (AdminLanguageSwitcher).
 	 *
 	 * Called on pre_get_posts.
+	 *
+	 * We use posts_clauses (not separate posts_join + posts_where) because for the
+	 * admin pages hierarchy WordPress applies posts_where before posts_join in some
+	 * internal sub-queries, which broke the shared-state approach. posts_clauses
+	 * receives all SQL clauses in one callback, avoiding the ordering problem.
+	 *
+	 * The filter state is captured in a closure so there is no mutable instance
+	 * state to worry about. The closure self-removes after firing once.
 	 */
 	public function applyLanguageFilter(\WP_Query $query): void
 	{
-		if (! is_admin() || ! $query->is_main_query()) {
+		if (! is_admin()) {
 			return;
 		}
 
@@ -197,10 +255,20 @@ final class PostListManager
 			return;
 		}
 
+		// Only act on queries for translatable post types.
+		$queryPostType    = $query->get('post_type');
+		$translatableTypes = $this->translatablePostTypes();
+
+		// post_type may be a string or an array — normalise.
+		$queryTypes = is_array($queryPostType) ? $queryPostType : [$queryPostType];
+
+		if (empty(array_intersect($queryTypes, $translatableTypes))) {
+			return;
+		}
+
 		$defaultCode = $this->languageRepository->getDefaultCode() ?? '';
 
-		// If the filter dropdown was submitted, honour it (even if value is empty
-		// = "All languages"), and do not apply the admin language fallback.
+		// Determine the active filter code.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if (array_key_exists('esml_language_filter', $_GET)) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -209,91 +277,50 @@ final class PostListManager
 			if ($filter === '') {
 				return; // "All languages" explicitly selected — show everything.
 			}
-
-			$this->activeFilter    = $filter;
-			$this->isDefaultFilter = ($filter === $defaultCode);
-
-			add_filter('posts_join',  [$this, 'postsJoinForFilter'],  10, 2);
-			add_filter('posts_where', [$this, 'postsWhereForFilter'], 10, 2);
-
-			return;
-		}
-
-		// No explicit filter — fall back to admin bar language context.
-		$adminLang = $this->adminLanguageSwitcher->getCurrentAdminLanguage();
-
-		if ($adminLang === '') {
-			return;
-		}
-
-		$this->activeFilter    = $adminLang;
-		$this->isDefaultFilter = ($adminLang === $defaultCode);
-
-		add_filter('posts_join',  [$this, 'postsJoinForFilter'],  10, 2);
-		add_filter('posts_where', [$this, 'postsWhereForFilter'], 10, 2);
-	}
-
-	/**
-	 * Add a JOIN to the translations table.
-	 *
-	 * - "unlinked"        → LEFT JOIN (posts with no translation record)
-	 * - default language  → LEFT JOIN (posts in default lang OR unlinked)
-	 * - other language    → INNER JOIN (posts explicitly in that language)
-	 */
-	public function postsJoinForFilter(string $join, \WP_Query $query): string
-	{
-		// Remove self immediately so we don't pollute subsequent queries.
-		remove_filter('posts_join', [$this, 'postsJoinForFilter'], 10);
-
-		if ($this->activeFilter === null) {
-			return $join;
-		}
-
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'es_multilang_translations';
-
-		if ($this->activeFilter === 'unlinked' || $this->isDefaultFilter) {
-			$join .= " LEFT JOIN {$table} esml_admin_t ON esml_admin_t.post_id = {$wpdb->posts}.ID ";
 		} else {
-			$join .= " INNER JOIN {$table} esml_admin_t ON esml_admin_t.post_id = {$wpdb->posts}.ID ";
+			// Fall back to admin bar language context.
+			$filter = $this->adminLanguageSwitcher->getCurrentAdminLanguage();
+
+			if ($filter === '') {
+				return;
+			}
 		}
 
-		return $join;
-	}
+		$isDefault = ($filter === $defaultCode);
 
-	/**
-	 * Add a WHERE clause scoping the query to the selected language.
-	 *
-	 * Default language uses a LEFT JOIN result, so posts with no translation
-	 * record (NULL) are included alongside explicitly-linked default posts.
-	 */
-	public function postsWhereForFilter(string $where, \WP_Query $query): string
-	{
-		remove_filter('posts_where', [$this, 'postsWhereForFilter'], 10);
+		// Register a self-removing posts_clauses closure that modifies both the
+		// JOIN and WHERE in a single atomic callback, capturing all needed values.
+		$callback = null;
+		$callback = static function (array $clauses) use ($filter, $isDefault, &$callback): array {
+			remove_filter('posts_clauses', $callback, 10);
 
-		if ($this->activeFilter === null) {
-			return $where;
-		}
+			global $wpdb;
+			$table = $wpdb->prefix . 'es_multilang_translations';
 
-		global $wpdb;
+			if ($filter === 'unlinked' || $isDefault) {
+				$clauses['join'] .= " LEFT JOIN {$table} esml_admin_t ON esml_admin_t.post_id = {$wpdb->posts}.ID ";
+			} else {
+				$clauses['join'] .= " INNER JOIN {$table} esml_admin_t ON esml_admin_t.post_id = {$wpdb->posts}.ID ";
+			}
 
-		if ($this->activeFilter === 'unlinked') {
-			$where .= ' AND esml_admin_t.post_id IS NULL ';
-		} elseif ($this->isDefaultFilter) {
-			// Include posts in the default language OR with no translation record.
-			$where .= $wpdb->prepare(
-				' AND (esml_admin_t.language_code = %s OR esml_admin_t.language_code IS NULL) ',
-				$this->activeFilter,
-			);
-		} else {
-			$where .= $wpdb->prepare(' AND esml_admin_t.language_code = %s ', $this->activeFilter);
-		}
+			if ($filter === 'unlinked') {
+				$clauses['where'] .= ' AND esml_admin_t.post_id IS NULL ';
+			} elseif ($isDefault) {
+				$clauses['where'] .= $wpdb->prepare(
+					' AND (esml_admin_t.language_code = %s OR esml_admin_t.language_code IS NULL) ',
+					$filter,
+				);
+			} else {
+				$clauses['where'] .= $wpdb->prepare(
+					' AND esml_admin_t.language_code = %s ',
+					$filter,
+				);
+			}
 
-		$this->activeFilter    = null;
-		$this->isDefaultFilter = false;
+			return $clauses;
+		};
 
-		return $where;
+		add_filter('posts_clauses', $callback, 10, 1);
 	}
 
 	// ---------------------------------------------------------------------------

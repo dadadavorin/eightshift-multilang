@@ -95,7 +95,7 @@ final class AdminNotices
 			return;
 		}
 
-		if (get_option('esml_ai_api_key_encrypted', '') !== '') {
+		if ($this->activeProviderHasKey()) {
 			return;
 		}
 
@@ -147,6 +147,34 @@ final class AdminNotices
 	// ---------------------------------------------------------------------------
 	// Helpers
 	// ---------------------------------------------------------------------------
+
+	/**
+	 * Return true when the currently active AI provider has a key stored (or is
+	 * the custom provider, which can operate without one).
+	 *
+	 * Checks the per-provider encrypted-key options introduced in Phase 2.
+	 * The legacy single-key option (esml_ai_api_key_encrypted) is intentionally
+	 * ignored — it was migrated to per-provider storage on upgrade.
+	 */
+	private function activeProviderHasKey(): bool
+	{
+		$provider = (string) get_option('esml_ai_provider', 'claude');
+
+		// Custom provider can work without an API key.
+		if ($provider === 'custom') {
+			return true;
+		}
+
+		$perProviderOptions = [
+			'claude' => 'esml_ai_key_claude_encrypted',
+			'gemini' => 'esml_ai_key_gemini_encrypted',
+			'openai' => 'esml_ai_key_openai_encrypted',
+		];
+
+		$optionKey = $perProviderOptions[$provider] ?? null;
+
+		return $optionKey !== null && get_option($optionKey, '') !== '';
+	}
 
 	/**
 	 * Return screen IDs where the API-key notice is relevant.

@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace EightshiftMultilang\Rest;
 
+use EightshiftMultilang\AI\ProviderRegistry;
 use EightshiftMultilang\AI\UsageTracker;
-use EightshiftMultilang\AI\Providers\ClaudeProvider;
 use EightshiftMultilang\Helpers\EncryptionHelper;
 
 /**
- * REST controller for plugin settings and AI usage.
+ * REST controller for plugin settings, provider metadata, and AI usage.
  *
  * All endpoints require manage_options.
  *
  * Routes (namespace: eightshift-multilang/v1):
  *   GET  /settings                    — read all plugin settings
- *   POST /settings                    — update settings (encrypts API key)
- *   POST /settings/validate-connection — test AI provider connectivity
+ *   POST /settings                    — update settings (encrypts per-provider API keys)
+ *   GET  /settings/providers          — list registered providers with model options
+ *   POST /settings/validate-connection — test the active AI provider
  *   GET  /usage                       — current AI call count & limit
  */
 final class SettingsController extends RestController
@@ -28,17 +29,38 @@ final class SettingsController extends RestController
 	 * @var array<string, string>
 	 */
 	private const SETTINGS_MAP = [
-		'url_mode'               => 'esml_url_mode',
+		'url_mode'                => 'esml_url_mode',
 		'translatable_post_types' => 'esml_translatable_post_types',
-		'translatable_suffixes'  => 'esml_translatable_suffixes',
-		'ai_provider'            => 'esml_ai_provider',
-		'ai_custom_prompt'       => 'esml_ai_custom_prompt',
-		'ai_monthly_limit'       => 'esml_ai_monthly_limit',
+		'translatable_suffixes'   => 'esml_translatable_suffixes',
+		'ai_provider'             => 'esml_ai_provider',
+		'ai_custom_prompt'        => 'esml_ai_custom_prompt',
+		'ai_monthly_limit'        => 'esml_ai_monthly_limit',
+		// Phase 2: per-provider model selection.
+		'ai_model_claude'         => 'esml_ai_model_claude',
+		'ai_model_gemini'         => 'esml_ai_model_gemini',
+		'ai_model_openai'         => 'esml_ai_model_openai',
+		// Phase 2: custom provider settings.
+		'custom_endpoint'         => 'esml_ai_custom_endpoint',
+		'custom_model'            => 'esml_ai_custom_model',
+		'custom_auth_header_key'  => 'esml_ai_custom_auth_header_key',
+	];
+
+	/**
+	 * Maps provider identifier → encrypted key option name.
+	 * Used for reading key presence and writing new keys.
+	 *
+	 * @var array<string, string>
+	 */
+	private const PROVIDER_KEY_OPTIONS = [
+		'claude' => 'esml_ai_key_claude_encrypted',
+		'gemini' => 'esml_ai_key_gemini_encrypted',
+		'openai' => 'esml_ai_key_openai_encrypted',
+		'custom' => 'esml_ai_key_custom_encrypted',
 	];
 
 	public function __construct(
 		private readonly UsageTracker $usageTracker,
-		private readonly ClaudeProvider $claudeProvider,
+		private readonly ProviderRegistry $providerRegistry,
 	) {
 	}
 
@@ -56,6 +78,12 @@ final class SettingsController extends RestController
 					'callback'            => [$this, 'update'],
 					'permission_callback' => [$this, 'permissionManageOptions'],
 				],
+			]);
+
+			register_rest_route(self::REST_NAMESPACE, '/settings/providers', [
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => [$this, 'providers'],
+				'permission_callback' => [$this, 'permissionManageOptions'],
 			]);
 
 			register_rest_route(self::REST_NAMESPACE, '/settings/validate-connection', [
@@ -77,10 +105,10 @@ final class SettingsController extends RestController
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * GET /settings — return all settings.
+	 * GET /settings — return all plugin settings.
 	 *
-	 * The API key is never returned in plaintext. Instead, a boolean
-	 * `api_key_set` indicates whether an encrypted key is stored.
+	 * API keys are never returned in plaintext. Instead, `provider_keys` is a
+	 * map of provider identifier → boolean indicating whether a key is stored.
 	 */
 	public function index(\WP_REST_Request $request): \WP_REST_Response
 	{
@@ -91,15 +119,21 @@ final class SettingsController extends RestController
 
 			// JSON-encoded arrays are decoded for the response.
 			if (in_array($field, ['translatable_post_types', 'translatable_suffixes'], true)) {
-				$decoded = json_decode((string) $raw, true);
+				$decoded          = json_decode((string) $raw, true);
 				$settings[$field] = is_array($decoded) ? $decoded : [];
 			} else {
 				$settings[$field] = $raw;
 			}
 		}
 
-		// Indicate whether an API key is configured without revealing it.
-		$settings['api_key_set'] = (get_option('esml_ai_api_key_encrypted', '') !== '');
+		// Per-provider key presence (boolean, never plaintext).
+		$providerKeys = [];
+
+		foreach (self::PROVIDER_KEY_OPTIONS as $providerId => $optionKey) {
+			$providerKeys[$providerId] = (get_option($optionKey, '') !== '');
+		}
+
+		$settings['provider_keys'] = $providerKeys;
 
 		return $this->respondOk($settings);
 	}
@@ -107,8 +141,14 @@ final class SettingsController extends RestController
 	/**
 	 * POST /settings — persist settings.
 	 *
-	 * Accepts any subset of the settings map. The API key is accepted as
-	 * plaintext in the `api_key` field and stored encrypted.
+	 * Accepts any subset of the settings map.
+	 *
+	 * Per-provider API keys are accepted as:
+	 *   provider_api_keys: { claude: "sk-...", gemini: "AIza..." }
+	 * Only non-empty values are stored; omitted providers are untouched.
+	 *
+	 * To clear a stored key, send:
+	 *   clear_api_key: "gemini"
 	 */
 	public function update(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
 	{
@@ -118,6 +158,7 @@ final class SettingsController extends RestController
 			return $this->respondError('invalid_body', 'Request body must be a JSON object.');
 		}
 
+		// Save plain settings fields.
 		foreach (self::SETTINGS_MAP as $field => $optionKey) {
 			if (! array_key_exists($field, $params)) {
 				continue;
@@ -133,48 +174,94 @@ final class SettingsController extends RestController
 			update_option($optionKey, sanitize_text_field((string) $value));
 		}
 
-		// API key: accept as plaintext, store encrypted.
-		if (isset($params['api_key']) && is_string($params['api_key']) && $params['api_key'] !== '') {
-			try {
-				$encrypted = EncryptionHelper::encrypt($params['api_key']);
-				update_option('esml_ai_api_key_encrypted', $encrypted, false);
-			} catch (\Exception $e) {
-				return $this->respondError('encryption_failed', 'Failed to encrypt the API key.', 500);
+		// Per-provider API keys: { claude: "plaintext-key", gemini: "..." }
+		if (isset($params['provider_api_keys']) && is_array($params['provider_api_keys'])) {
+			foreach ($params['provider_api_keys'] as $providerId => $plainKey) {
+				$optionKey = self::PROVIDER_KEY_OPTIONS[$providerId] ?? null;
+
+				if ($optionKey === null || ! is_string($plainKey) || $plainKey === '') {
+					continue;
+				}
+
+				try {
+					update_option($optionKey, EncryptionHelper::encrypt($plainKey), false);
+				} catch (\Exception $e) {
+					return $this->respondError(
+						'encryption_failed',
+						sprintf('Failed to encrypt API key for provider "%s".', $providerId),
+						500
+					);
+				}
 			}
 		}
 
-		// If api_key is explicitly set to empty string, clear the stored key.
-		if (isset($params['api_key']) && $params['api_key'] === '') {
-			delete_option('esml_ai_api_key_encrypted');
+		// Clear a stored key by provider identifier.
+		if (isset($params['clear_api_key']) && is_string($params['clear_api_key'])) {
+			$optionKey = self::PROVIDER_KEY_OPTIONS[$params['clear_api_key']] ?? null;
+
+			if ($optionKey !== null) {
+				delete_option($optionKey);
+			}
 		}
 
-		// Fire hook so other systems (e.g. CacheInvalidator) can react.
 		do_action('esml_settings_saved');
 
 		return $this->respondOk(['saved' => true]);
 	}
 
 	/**
-	 * POST /settings/validate-connection — ping the AI provider.
+	 * GET /settings/providers — return registered provider metadata.
+	 *
+	 * Response shape:
+	 *   {
+	 *     "claude": { "label": "Claude (Anthropic)", "models": [...] },
+	 *     "gemini": { "label": "Google Gemini",      "models": [...] },
+	 *     ...
+	 *   }
+	 */
+	public function providers(\WP_REST_Request $request): \WP_REST_Response
+	{
+		return $this->respondOk($this->providerRegistry->getMeta());
+	}
+
+	/**
+	 * POST /settings/validate-connection — ping the currently-configured AI provider.
+	 *
+	 * Uses the provider stored in esml_ai_provider at the time of the request,
+	 * so calling this after a provider switch reflects the new choice immediately.
 	 */
 	public function validateConnection(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
 	{
-		if (get_option('esml_ai_api_key_encrypted', '') === '') {
-			return $this->respondError('no_api_key', 'No API key configured.', 422);
+		$activeIdentifier = (string) get_option('esml_ai_provider', 'claude');
+		$keyOption        = self::PROVIDER_KEY_OPTIONS[$activeIdentifier] ?? null;
+
+		// For the custom provider, an empty key is acceptable (unauthenticated endpoints).
+		// For all others, a key must be present.
+		if ($activeIdentifier !== 'custom' && ($keyOption === null || get_option($keyOption, '') === '')) {
+			return $this->respondError(
+				'no_api_key',
+				sprintf(
+					'No API key configured for the "%s" provider.',
+					$activeIdentifier
+				),
+				422
+			);
 		}
 
 		try {
-			$status = $this->claudeProvider->validateConnection();
+			$provider = $this->providerRegistry->make($activeIdentifier);
+			$status   = $provider->validateConnection();
 		} catch (\RuntimeException $e) {
 			return $this->respondError('connection_error', $e->getMessage(), 500);
 		}
 
-		if (! $status->ok) {
-			return $this->respondError('connection_failed', $status->message ?? 'Connection failed.', 502);
+		if (! $status->isConnected) {
+			return $this->respondError('connection_failed', $status->message, 502);
 		}
 
 		return $this->respondOk([
 			'connected' => true,
+			'provider'  => $activeIdentifier,
 			'model'     => $status->model,
 		]);
 	}

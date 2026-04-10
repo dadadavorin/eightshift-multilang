@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace EightshiftMultilang\Main;
 
 use EightshiftMultilang\AI\PromptBuilder;
+use EightshiftMultilang\AI\ProviderFactory;
+use EightshiftMultilang\AI\ProviderRegistry;
 use EightshiftMultilang\AI\Providers\ClaudeProvider;
+use EightshiftMultilang\AI\Providers\CustomProvider;
+use EightshiftMultilang\AI\Providers\GeminiProvider;
+use EightshiftMultilang\AI\Providers\OpenAIProvider;
 use EightshiftMultilang\AI\ResponseParser;
 use EightshiftMultilang\AI\TranslationEngine;
 use EightshiftMultilang\AI\UsageTracker;
@@ -55,7 +60,7 @@ final class Main
 	private CacheInvalidator $cacheInvalidator;
 	private BlockParser $blockParser;
 	private MarkupRebuilder $markupRebuilder;
-	private ClaudeProvider $claudeProvider;
+	private ProviderRegistry $providerRegistry;
 	private UsageTracker $usageTracker;
 	private TranslationEngine $translationEngine;
 	private UrlRouter $urlRouter;
@@ -91,15 +96,46 @@ final class Main
 
 		$this->cacheInvalidator = new CacheInvalidator($this->cacheManager, $this->translationRepository);
 
+		// Phase 2: Provider registry — all adapters registered here.
+		$responseParser = new ResponseParser();
+
+		$this->providerRegistry = new ProviderRegistry();
+		$this->providerRegistry->register('claude', 'Claude (Anthropic)', fn() => new ClaudeProvider($responseParser), [
+			['id' => 'claude-sonnet-4-20250514', 'label' => 'Claude Sonnet 4'],
+			['id' => 'claude-opus-4-5',          'label' => 'Claude Opus 4'],
+			['id' => 'claude-haiku-4-5',          'label' => 'Claude Haiku 4'],
+		]);
+		$this->providerRegistry->register('gemini', 'Google Gemini', fn() => new GeminiProvider($responseParser), [
+			['id' => 'gemini-3.1-pro-preview',       'label' => 'Gemini 3.1 Pro'],
+			['id' => 'gemini-3.1-flash-lite-preview', 'label' => 'Gemini 3.1 Flash Lite'],
+			['id' => 'gemini-3-flash-preview',        'label' => 'Gemini 3 Flash'],
+			['id' => 'gemini-2.5-pro',                'label' => 'Gemini 2.5 Pro'],
+			['id' => 'gemini-2.5-flash',              'label' => 'Gemini 2.5 Flash'],
+			['id' => 'gemini-2.5-flash-lite',         'label' => 'Gemini 2.5 Flash Lite'],
+			['id' => 'gemma-3-4b-it',                 'label' => 'Gemma 3 4B'],
+			['id' => 'gemma-3-12b-it',                'label' => 'Gemma 3 12B'],
+			['id' => 'gemma-3-27b-it',                'label' => 'Gemma 3 27B'],
+			['id' => 'gemma-4-26b-moe-it',            'label' => 'Gemma 4 26B'],
+			['id' => 'gemma-4-31b-it',                'label' => 'Gemma 4 31B'],
+		]);
+		$this->providerRegistry->register('openai', 'OpenAI', fn() => new OpenAIProvider($responseParser), [
+			['id' => 'gpt-4o',       'label' => 'GPT-4o'],
+			['id' => 'gpt-4o-mini',  'label' => 'GPT-4o mini'],
+			['id' => 'gpt-4-turbo',  'label' => 'GPT-4 Turbo'],
+		]);
+		$this->providerRegistry->register('custom', 'Custom (OpenAI-compatible)', fn() => new CustomProvider($responseParser), []);
+
+		// Allow third-party plugins to register additional providers.
+		do_action('esml_register_ai_provider', $this->providerRegistry);
+
 		// Sprint 2: Parser + AI.
 		$this->blockParser     = new BlockParser(new AttributeExtractor());
 		$this->markupRebuilder = new MarkupRebuilder();
-		$this->claudeProvider  = new ClaudeProvider(new ResponseParser());
 		$this->usageTracker    = new UsageTracker();
 		$this->translationEngine = new TranslationEngine(
 			blockParser: $this->blockParser,
 			markupRebuilder: $this->markupRebuilder,
-			provider: $this->claudeProvider,
+			provider: ProviderFactory::make($this->providerRegistry),
 			promptBuilder: new PromptBuilder(),
 			languageRepository: $this->languageRepository,
 			translationRepository: $this->translationRepository,
@@ -123,7 +159,7 @@ final class Main
 			$this->translationEngine,
 			$this->syncDetector,
 		);
-		$this->settingsController = new SettingsController($this->usageTracker, $this->claudeProvider);
+		$this->settingsController = new SettingsController($this->usageTracker, $this->providerRegistry);
 
 		// Sprint 6: SEO, Language Switcher, Post List, Admin Notices.
 		$this->hreflangManager       = new HreflangManager($this->translationRepository, $this->languageRepository, $this->cacheManager);
@@ -267,6 +303,11 @@ final class Main
 	public function getMarkupRebuilder(): MarkupRebuilder
 	{
 		return $this->markupRebuilder;
+	}
+
+	public function getProviderRegistry(): ProviderRegistry
+	{
+		return $this->providerRegistry;
 	}
 
 	public function getTranslationEngine(): TranslationEngine
